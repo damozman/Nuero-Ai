@@ -180,7 +180,7 @@ class MemoryDaemon:
             self.owners[folder] = bot
             self._save_config()
             self._watch(folder)
-        print(f"\n[DAEMON]: Now monitoring folder: '{folder}' for {'shared memory' if bot == SHARED else 'bot ' + bot}")
+        print(f"\n[DAEMON]: Now monitoring folder: '{folder}' for {'shared memory' if bot == SHARED else 'Family Node ' + bot}")
         # Files already learned through another watched folder move to their new owner without re-reading
         self._reassign_owners()
         threading.Thread(target=self._scan, args=(folder,), daemon=True).start()

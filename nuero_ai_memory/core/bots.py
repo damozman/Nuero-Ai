@@ -59,7 +59,7 @@ class BotRegistry:
     def require(self, bot_id):
         bot = self.get(bot_id)
         if not bot:
-            raise ValueError(f"No bot called '{bot_id}'.")
+            raise ValueError(f"No Family Node called '{bot_id}'.")
         return bot
 
     def find(self, hint):
@@ -72,10 +72,10 @@ class BotRegistry:
     def add(self, name, personality=""):
         name = name.strip()
         if not name:
-            raise ValueError("Give the bot a name.")
+            raise ValueError("Give the Family Node a name.")
         with self.lock:
             if any(b["name"].lower() == name.lower() for b in self.bots):
-                raise ValueError(f"There's already a bot called {name}.")
+                raise ValueError(f"There's already a Family Node called {name}.")
             base, n = _slug(name), 2
             bot_id = base
             while bot_id == SHARED or self.get(bot_id):
@@ -97,7 +97,7 @@ class BotRegistry:
                 bot["music"] = bool(music)
             if name is not None and name.strip():
                 if any(b is not bot and b["name"].lower() == name.strip().lower() for b in self.bots):
-                    raise ValueError(f"There's already a bot called {name.strip()}.")
+                    raise ValueError(f"There's already a Family Node called {name.strip()}.")
                 bot["name"] = name.strip()
             if personality is not None:
                 bot["personality"] = personality.strip()

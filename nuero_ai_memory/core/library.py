@@ -77,9 +77,19 @@ class Library:
         return [
             {k: v for k, v in b.items() if k != "items"}
             | {"count": len(b["items"]), "images": sum(1 for i in b["items"] if i.get("image")),
-               "songs": sum(1 for i in b["items"] if i.get("music"))}
+               "songs": sum(1 for i in b["items"] if i.get("music")),
+               "unread": sum(1 for i in b["items"] if i.get("unread"))}
             for b in self.books
         ]
+
+    def mark_seen(self, book_id):
+        """The user opened the book: pages Family Nodes added are no longer new."""
+        with self.lock:
+            book = self.require(book_id)
+            if any(i.get("unread") for i in book["items"]):
+                for item in book["items"]:
+                    item.pop("unread", None)
+                self._save()
 
     def create_book(self, title, emoji="📘", color=None, kind="user", bot=None):
         title = (title or "").strip()
@@ -115,9 +125,11 @@ class Library:
             self.books = [b for b in self.books if b["id"] != book_id]
             self._save()
 
-    def add_item(self, book_id, text="", title="", source="", origin="", bot=None, image=None, music=None):
+    def add_item(self, book_id, text="", title="", source="", origin="", bot=None, image=None, music=None,
+                 by_node=False):
         """origin: where it came from, e.g. "Athena's reply", "Note", "Memory", "File".
-        music: a song card (title, artist, album, artwork, preview, links) from core.music."""
+        music: a song card (title, artist, album, artwork, preview, links) from core.music.
+        by_node: a Family Node added it on its own, so it's flagged as new until the user opens the book."""
         text, title = (text or "").strip(), (title or "").strip()
         if not text and not image and not music:
             raise ValueError("Nothing to add.")
@@ -131,6 +143,8 @@ class Library:
                 "text": text, "source": source, "origin": origin, "bot": bot, "image": image, "music": music,
                 "added": _now(),
             }
+            if by_node:
+                item["unread"] = True
             book["items"].append(item)
             book["updated"] = _now()
             self._save()

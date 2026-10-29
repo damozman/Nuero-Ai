@@ -174,7 +174,7 @@ class ImageStudio:
         if auto:
             with self.lock:
                 if self.used_today() >= self.settings["daily_cap"]:
-                    raise ProviderError("The daily limit for images bots create on their own has been reached.")
+                    raise ProviderError("The daily limit for images Family Nodes create on their own has been reached.")
                 today = datetime.date.today().isoformat()
                 self.settings["used"] = {today: self.used_today() + 1}  # older days aren't needed
                 self._save()

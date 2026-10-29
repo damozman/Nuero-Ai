@@ -152,7 +152,7 @@ class MemoryPipeline:
         if bot_id:
             bot = self.bots.get(bot_id)
             if not bot:
-                raise ProviderError(f"No bot called '{bot_id}'.")
+                raise ProviderError(f"No Family Node called '{bot_id}'.")
             identity = bot["personality"] or f"You are {bot['name']}, a personal AI assistant."
             name = bot["name"]
             partitions = [bot_id, SHARED]
@@ -164,15 +164,17 @@ class MemoryPipeline:
                         f"Apply this skill in your reply, staying in character:\n{active_skill['instructions']}")
         if council:
             identity = f"{identity}\n\n{COUNCIL_NOTE}"
-        # Bots may create images on their own, except in Council (one question could trigger a dozen)
-        # and on the local AI, where the point is that nothing leaves the computer
+        # Family Nodes may create images on their own, except in Council (one question could trigger a dozen)
+        # and on the local AI, where the point is that nothing leaves the computer. The main Nuero AI is the
+        # system helper, so images, archiving and songs are left to the Family Nodes.
         studio = get_studio()
-        may_draw = not council and self.provider_id != "ollama" and studio.can_auto() and (
-            bot.get("images", True) if bot_id else studio.settings["main_auto"])
+        may_draw = bool(bot_id) and not council and self.provider_id != "ollama" and studio.can_auto() \
+            and bot.get("images", True)
         if may_draw:
             identity = f"{identity}\n\n{AUTO_IMAGE_NOTE}"
-        identity = f"{identity}\n\n{ARCHIVE_NOTE}"
-        may_share_music = bot.get("music", True) if bot_id else True
+        if bot_id:
+            identity = f"{identity}\n\n{ARCHIVE_NOTE}"
+        may_share_music = bool(bot_id) and bot.get("music", True)
         if may_share_music:
             identity = f"{identity}\n\n{SONG_NOTE}"
 
@@ -250,7 +252,8 @@ class MemoryPipeline:
         playlist = get_library().playlist_for(bot_id or "main", name, bot["color"] if bot else "#0096ff")
         shared = []
         for card, (_, why) in zip(cards, queries):
-            get_library().add_item(playlist["id"], text=why, origin=f"Shared by {name}", bot=bot_id, music=card)
+            get_library().add_item(playlist["id"], text=why, origin=f"Shared by {name}", bot=bot_id, music=card,
+                                   by_node=True)
             self.vault.add_memory(
                 f"{name} shared the song \"{card['title']}\" by {card['artist']} on {datetime.date.today():%B %d, %Y}"
                 + (f" because: {why}" if why else "."),
@@ -263,7 +266,8 @@ class MemoryPipeline:
     def _archive(self, bot_id, name, title, text):
         bot = self.bots.get(bot_id) if bot_id else None
         book = get_library().archive_for(bot_id or "main", name, bot["color"] if bot else "#0096ff")
-        get_library().add_item(book["id"], text=text, title=title, origin=f"Archived by {name}", bot=bot_id)
+        get_library().add_item(book["id"], text=text, title=title, origin=f"Archived by {name}", bot=bot_id,
+                               by_node=True)
         self.vault.add_memory(
             f"{name} archived this on {datetime.date.today():%B %d, %Y} as \"{title}\": {text}",
             metadata={"origin": "archive", "bot_id": bot_id or SHARED},
@@ -288,7 +292,7 @@ class MemoryPipeline:
     def create_image(self, prompt: str, bot_id=None) -> dict:
         """An image the user asked for, saved to the memory of whoever they're talking to."""
         if bot_id and not self.bots.get(bot_id):
-            raise ProviderError(f"No bot called '{bot_id}'.")
+            raise ProviderError(f"No Family Node called '{bot_id}'.")
         name = self.bots.get(bot_id)["name"] if bot_id else "Nuero AI"
         return self._make_image(self.scrubber.mask(prompt), bot_id, name, requested=True)
 
@@ -298,7 +302,7 @@ class MemoryPipeline:
         bots = [self.bots.get(b) for b in bot_ids] if bot_ids else list(self.bots.bots)
         bots = [b for b in bots if b]
         if not bots:
-            raise ProviderError("No bots to ask. Add bots first, or pick at least one council member.")
+            raise ProviderError("No Family Nodes to ask. Add Family Nodes first, or pick at least one council member.")
         with ThreadPoolExecutor(max_workers=max(1, min(COUNCIL_PARALLEL, len(bots)))) as pool:
             futures = {pool.submit(self.respond, user_input, b["id"], True, None, books): b for b in bots}
             for future in as_completed(futures):

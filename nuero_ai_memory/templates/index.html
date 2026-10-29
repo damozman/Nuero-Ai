@@ -137,6 +137,17 @@
     .book .b-title { font-weight: 700; font-size: 0.86rem; line-height: 1.25; margin-top: 8px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; }
     .book .b-count { margin-top: auto; font-size: 0.7rem; opacity: 0.8; }
     .book.new { --bc: transparent; background: none; border: 2px dashed rgba(255, 255, 255, 0.2); box-shadow: none; color: var(--muted); align-items: center; justify-content: center; text-align: center; padding: 10px; }
+    .book.unread { animation: book-glow 1.6s ease-in-out infinite alternate; }
+    @keyframes book-glow {
+      from { box-shadow: 4px 6px 14px rgba(0, 0, 0, 0.55), 0 0 0 2px rgba(253, 230, 138, 0.7), 0 0 10px rgba(253, 230, 138, 0.35); }
+      to { box-shadow: 4px 6px 14px rgba(0, 0, 0, 0.55), 0 0 0 2px rgba(253, 230, 138, 1), 0 0 24px rgba(253, 230, 138, 0.75); }
+    }
+    .book .b-new { position: absolute; top: -10px; right: -8px; background: #fde68a; color: #3b2a00; font-size: 0.68rem; font-weight: 800; padding: 3px 8px; border-radius: 999px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5); white-space: nowrap; }
+    .nav-item .new-badge { margin-left: auto; background: #fde68a; color: #3b2a00; font-size: 0.68rem; font-weight: 800; padding: 2px 8px; border-radius: 999px; flex-shrink: 0; }
+    .nav-item.lib.has-new .avatar { animation: book-glow 1.6s ease-in-out infinite alternate; }
+    .nav-item.lib.has-new .who-sub { color: #fde68a; }
+    .page.new { box-shadow: 0 0 0 2px #f59e0b, 0 3px 14px rgba(245, 158, 11, 0.45); }
+    .page .new-tag { display: inline-block; margin-left: 8px; background: #f59e0b; color: #fff; font-size: 0.62rem; font-weight: 800; padding: 1px 7px; border-radius: 999px; vertical-align: middle; font-family: 'Segoe UI', sans-serif; }
     .book.attached::after { content: '📎'; position: absolute; top: 6px; right: 8px; font-size: 0.9rem; }
 
     .book-view { max-width: 900px; margin: 0 auto; padding-top: 18px; }
@@ -292,12 +303,12 @@
     <div id="nav-list"></div>
     <div class="nav-bottom">
       <div class="nav-label" style="margin:0 2px">AI service</div>
-      <div class="ai-row" title="Which AI service and model answers (applies to every bot)">
+      <div class="ai-row" title="Which AI service and model answers (applies to every Family Node)">
         <select id="provider-select" aria-label="AI service"></select>
         <select id="model-select" aria-label="Model"></select>
       </div>
       <div class="nav-tools">
-        <button type="button" data-panel="bots-panel">🤖 Bots</button>
+        <button type="button" data-panel="bots-panel" title="Create and edit Family Nodes">👪 Family</button>
         <button type="button" data-panel="memory-panel">🧠 Memory</button>
         <button type="button" data-panel="help-panel">? Help</button>
       </div>
@@ -313,7 +324,7 @@
         <div id="head-sub"></div>
       </div>
       <div class="head-actions">
-        <select id="skill-select" hidden title="Which of this bot's skills to use" aria-label="Skill"></select>
+        <select id="skill-select" hidden title="Which of this Family Node's skills to use" aria-label="Skill"></select>
         <button type="button" id="books-chip" class="chip on" hidden title="Books attached to this conversation"></button>
         <button type="button" id="members-btn" class="chip" hidden>Members ▾</button>
         <button type="button" id="voice-btn" class="chip" title="Read replies aloud">🔇 <span>Voice off</span></button>
@@ -362,22 +373,24 @@
 </dialog>
 
 <!-- ---------- Bots panel ---------- -->
-<aside id="bots-panel" class="side-panel" aria-label="Bots">
-  <h2>Bots <button type="button" class="panel-close" data-close title="Close (Esc)">✕</button></h2>
-  <p class="sub">Each bot has its own personality and its own private memory, fed by its folder. Every bot can also use the shared memories. Bots never see each other's private memories — not even in Council.</p>
+<aside id="bots-panel" class="side-panel" aria-label="Family Nodes">
+  <h2>Family Nodes <button type="button" class="panel-close" data-close title="Close (Esc)">✕</button></h2>
+  <p class="sub">Each Family Node has its own personality and its own private memory, fed by its folder. Every Family Node can also use the shared memories. Family Nodes never see each other's private memories — not even in Council.</p>
 
-  <h3>➕ Add a bot</h3>
+  <h3>➕ Add a Family Node</h3>
   <div class="form-stack">
-    <input id="new-bot-folder" class="field" type="text" placeholder="Bot's folder — paste the path (optional)">
+    <input id="new-bot-folder" class="field" type="text" placeholder="Family Node's folder — paste the path (optional)">
     <input id="new-bot-name" class="field" type="text" placeholder="Name (blank = use the folder's name)">
-    <button type="button" id="new-bot-add" class="btn">Create bot</button>
+    <button type="button" id="new-bot-add" class="btn">Create Family Node</button>
   </div>
   <p id="bot-msg" class="panel-msg"></p>
-  <p class="sub">In File Explorer, right-click the bot's folder → <b>Copy as path</b>. Everything in it (subfolders too) becomes that bot's private memory. A file in it named like <code>persona</code>, <code>personality</code>, <code>identity</code> or <code>instructions</code> (.txt/.md) is used as the starting personality.</p>
+  <p class="sub">In File Explorer, right-click the Family Node's folder → <b>Copy as path</b>. Everything in it (subfolders too) becomes that Family Node's private memory. A file in it named like <code>persona</code>, <code>personality</code>, <code>identity</code> or <code>instructions</code> (.txt/.md) is used as the starting personality.</p>
 
-  <h3>🤖 Your bots</h3>
-  <div id="main-card"></div>
+  <h3>👪 Your Family Nodes</h3>
   <div id="bot-list"><p class="sub">Loading…</p></div>
+
+  <h3>⚙️ System</h3>
+  <div id="main-card"></div>
 
   <h3>🎨 Images</h3>
   <div class="settings-grid">
@@ -386,16 +399,16 @@
     <span>Daily limit</span>
     <span><input id="image-cap" class="field" type="number" min="0" max="500"> <span id="image-used" class="sub"></span></span>
   </div>
-  <label class="check" style="margin-top:10px"><input id="image-main" type="checkbox"> Nuero AI (main) can create images on its own</label>
+  <input id="image-main" type="checkbox" hidden>
   <div class="bot-actions" style="margin-top:8px"><button type="button" id="image-save" class="btn">Save image settings</button></div>
   <p id="image-msg" class="panel-msg"></p>
-  <p class="sub">The daily limit only counts images bots decide to create themselves — not ones you ask for. Each bot also has its own on/off switch above. Bots never create images in Council. Images need a Gemini or Grok key (Claude can't make images); each one costs a few cents.</p>
+  <p class="sub">The daily limit only counts images Family Nodes decide to create themselves — not ones you ask for. Each Family Node also has its own on/off switch above. Family Nodes never create images in Council. Images need a Gemini or Grok key (Claude can't make images); each one costs a few cents.</p>
 </aside>
 
 <!-- ---------- Memory panel ---------- -->
 <aside id="memory-panel" class="side-panel" aria-label="Memory">
   <h2>Memory <button type="button" class="panel-close" data-close title="Close (Esc)">✕</button></h2>
-  <p class="sub">Everything Nuero AI remembers lives on this computer. Memories are either <b>shared</b> (every bot can use them) or <b>private</b> to one bot.</p>
+  <p class="sub">Everything Nuero AI remembers lives on this computer. Memories are either <b>shared</b> (every Family Node can use them) or <b>private</b> to one Family Node.</p>
 
   <h3>📁 Watched folders</h3>
   <ul id="folder-list"><li class="sub">Loading…</li></ul>
@@ -405,7 +418,7 @@
     <button type="button" id="folder-add" class="btn">Add</button>
   </div>
   <p id="folder-msg" class="panel-msg"></p>
-  <p class="sub">The menu next to <b>Add</b> picks whose memory the folder feeds: <b>Shared</b> or one bot. <b>Remove</b> asks whether to forget what was learned or keep it. Your files are never changed.</p>
+  <p class="sub">The menu next to <b>Add</b> picks whose memory the folder feeds: <b>Shared</b> or one Family Node. <b>Remove</b> asks whether to forget what was learned or keep it. Your files are never changed.</p>
 
   <h3>📥 Quick drop folder (shared)</h3>
   <div class="path-box">
@@ -415,12 +428,12 @@
   <ul>
     <li>Reads <code>.txt</code>, <code>.md</code>, <code>.log</code>, <code>.py</code> up to 5 MB, including subfolders. Word/PDF: save as .txt first.</li>
     <li>New and edited files are learned within seconds; deleted files are forgotten.</li>
-    <li><b>Save as memory</b> in the chat stores text directly — into the bot you're talking to, or shared.</li>
+    <li><b>Save as memory</b> in the chat stores text directly — into the Family Node you're talking to, or shared.</li>
     <li>Under any reply, open <b>memories used</b> to see what it drew on, and <b>Forget</b> anything that shouldn't be there.</li>
   </ul>
 
   <h3>🖼 Images</h3>
-  <p>Every image created is saved here, and a description of it goes into the memory of whoever made it (or the bot you were talking to):</p>
+  <p>Every image created is saved here, and a description of it goes into the memory of whoever made it (or the Family Node you were talking to):</p>
   <div class="path-box">
     <code id="images-path">{{IMAGES_PATH}}</code>
     <button type="button" class="btn" data-copy="images-path">Copy</button>
@@ -446,54 +459,54 @@
 
   <h3>💬 Conversations</h3>
   <ul>
-    <li>Pick who to talk to in the left sidebar: <b>Nuero AI</b> (main assistant, shared memories), any <b>bot</b>, or the <b>Council</b>.</li>
+    <li>Pick who to talk to in the left sidebar: any <b>Family Node</b>, the <b>Council</b>, or — under System — <b>Nuero AI</b>, the system helper that answers questions about the app itself.</li>
     <li>Each conversation is kept separately in this browser, and the AI sees its last few messages, so follow-up questions work. <b>Clear</b> starts fresh.</li>
     <li>Before answering, the AI looks up the 3 memories most related to your message. <b>memories used</b> under a reply shows them.</li>
   </ul>
 
   <h3>🏛 Council</h3>
   <ul>
-    <li>Your message goes to several bots at once; each answer fills in as that bot finishes.</li>
-    <li><b>Members ▾</b> chooses who's in. Each bot answers from its own private memories plus shared ones.</li>
-    <li>One AI request per bot — if the service starts refusing (rate limit), pick fewer members.</li>
+    <li>Your message goes to several Family Nodes at once; each answer fills in as that Family Node finishes.</li>
+    <li><b>Members ▾</b> chooses who's in. Each Family Node answers from its own private memories plus shared ones.</li>
+    <li>One AI request per Family Node — if the service starts refusing (rate limit), pick fewer members.</li>
   </ul>
 
-  <h3>🤖 Bots</h3>
+  <h3>👪 Family Nodes</h3>
   <ul>
-    <li>Create bots in <b>🤖 Bots</b> from their folders. Edit each personality there — it's the bot's instructions.</li>
+    <li>Create Family Nodes in <b>👪 Family Nodes</b> from their folders. Edit each personality there — it's the Family Node's instructions.</li>
     <li><b>Save as memory</b> saves into whoever you're talking to.</li>
     <li><b>Picture:</b> upload a photo or click <b>🎨 Create</b> to have the image AI paint a portrait from the personality.</li>
-    <li><b>🔊 Voice:</b> give each bot its own voice, speed and pitch (▶ Preview). ⭐ voices are the natural-sounding ones — Microsoft Edge has the best free selection. Voice choices are saved in this browser.</li>
-    <li><b>🧩 Skills:</b> add named abilities to a bot (write them, or import a .md/.txt skill file). In the chat, pick one from the 🧩 menu in the header; switch any time.</li>
+    <li><b>🔊 Voice:</b> give each Family Node its own voice, speed and pitch (▶ Preview). ⭐ voices are the natural-sounding ones — Microsoft Edge has the best free selection. Voice choices are saved in this browser.</li>
+    <li><b>🧩 Skills:</b> add named abilities to a Family Node (write them, or import a .md/.txt skill file). In the chat, pick one from the 🧩 menu in the header; switch any time.</li>
   </ul>
 
   <h3>🎵 Music</h3>
   <ul>
-    <li>Talk about music, ask for recommendations, or just chat — when a song fits how a bot feels, it shares it as a <b>song card</b>: artwork, why it chose it, a 30-second preview, and <b>▶ Spotify</b> to open it in your Spotify app.</li>
-    <li>Every song a bot shares is collected in its own playlist on the <b>Playlists</b> shelf in 📚 Library. <b>📚 Save</b> also files a song in any of your books.</li>
-    <li>Song details and previews come from Apple's and Deezer's free public search; nothing is downloaded. Turn sharing off per bot with “Can share songs” in 🤖 Bots.</li>
+    <li>Talk about music, ask for recommendations, or just chat — when a song fits how a Family Node feels, it shares it as a <b>song card</b>: artwork, why it chose it, a 30-second preview, and <b>▶ Spotify</b> to open it in your Spotify app.</li>
+    <li>Every song a Family Node shares is collected in its own playlist on the <b>Playlists</b> shelf in 📚 Library. <b>📚 Save</b> also files a song in any of your books.</li>
+    <li>Song details and previews come from Apple's and Deezer's free public search; nothing is downloaded. Turn sharing off per Family Node with “Can share songs” in 👪 Family Nodes.</li>
   </ul>
 
   <h3>📚 Library</h3>
   <ul>
-    <li>Open <b>📚 Library</b> in the sidebar: your books on a shelf, plus each bot's own <b>archive</b> where it keeps what it decides is important.</li>
+    <li>Open <b>📚 Library</b> in the sidebar: your books on a shelf, plus each Family Node's own <b>archive</b> where it keeps what it decides is important.</li>
     <li>Add pages with <b>📚 Save to library</b> under any reply, memory or image; or inside a book, <b>Write a page</b> or <b>Add from memories</b> (search everything, add a piece or a whole file).</li>
     <li><b>📎 Use in a conversation</b> (or the 📚 button by the message box) attaches books: the AI then reads them in full with every message.</li>
   </ul>
 
   <h3>🧠 AI service</h3>
   <ul>
-    <li>Choose <b>Gemini</b>, <b>Claude</b>, <b>Grok</b> or <b>Ollama (local)</b> and the model at the bottom-left; every bot uses it. Claude: <b>Haiku</b> (fast) → <b>Sonnet</b> → <b>Opus</b> (heavy lifting).</li>
+    <li>Choose <b>Gemini</b>, <b>Claude</b>, <b>Grok</b> or <b>Ollama (local)</b> and the model at the bottom-left; every Family Node uses it. Claude: <b>Haiku</b> (fast) → <b>Sonnet</b> → <b>Opus</b> (heavy lifting).</li>
     <li>A service is offered once its key is set (<code>GEMINI_API_KEY</code>, <code>ANTHROPIC_API_KEY</code>, <code>XAI_API_KEY</code>), e.g. in PowerShell:<br><code>[Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY", "your-key", "User")</code><br>then open a new terminal and restart.</li>
     <li>Only the relevant memories and recent messages are sent, with names and addresses masked.</li>
-    <li><b>🔒 Ollama (local)</b> runs AI models on this computer — nothing leaves the machine and it works offline. Start Ollama, then pick it and a model you've installed (<code>ollama pull llama3.2</code>). Bots don't create images on their own while it's selected. For full privacy, also leave 🎤 off (the browser transcribes speech online) and use voices without ⭐ (those stream from Microsoft).</li>
+    <li><b>🔒 Ollama (local)</b> runs AI models on this computer — nothing leaves the machine and it works offline. Start Ollama, then pick it and a model you've installed (<code>ollama pull llama3.2</code>). Family Nodes don't create images on their own while it's selected. For full privacy, also leave 🎤 off (the browser transcribes speech online) and use voices without ⭐ (those stream from Microsoft).</li>
   </ul>
 
   <h3>🎨 Images</h3>
   <ul>
     <li>Type a description and click <b>🎨</b> (or type <code>/image a lighthouse at dusk</code>) to create a picture.</li>
-    <li>Bots can also create images on their own when they think a picture helps — shown in their reply with the prompt they wrote. Turn this on/off per bot, and set a daily limit, in <b>🤖 Bots</b>. Never in Council.</li>
-    <li>Images are saved on this computer (see <b>🧠 Memory</b>), and bots remember what they made.</li>
+    <li>Family Nodes can also create images on their own when they think a picture helps — shown in their reply with the prompt they wrote. Turn this on/off per Family Node, and set a daily limit, in <b>👪 Family Nodes</b>. Never in Council.</li>
+    <li>Images are saved on this computer (see <b>🧠 Memory</b>), and Family Nodes remember what they made.</li>
     <li>Needs a Gemini or Grok key — Claude can't create images. Each image costs a few cents.</li>
   </ul>
 
@@ -505,7 +518,7 @@
   <h3>⚙️ Running</h3>
   <ul>
     <li>Start with <code>start_nuero.bat</code>. Stop by typing <code>exit</code> in its terminal.</li>
-    <li>Terminal commands: <code>/ai</code>, <code>/bot</code>, <code>/bot Name</code>, <code>/council question</code>.</li>
+    <li>Terminal commands: <code>/ai</code>, <code>/node</code>, <code>/node Name</code>, <code>/council question</code>.</li>
     <li>Only one copy can run at a time.</li>
   </ul>
 </aside>
@@ -559,7 +572,7 @@
   // ================================================================ state
   const MAIN = 'main', COUNCIL = 'council';
   let bots = [];
-  let target = store.get('nuero-target', MAIN);
+  let target = store.get('nuero-target', null);  // null: start with the first Family Node
   const threads = {};           // target -> entries (cached from localStorage)
   const pending = {};           // target -> true while waiting for a reply
   let excluded = new Set(store.get('nuero-council-excluded', []));
@@ -584,6 +597,8 @@
     if (bot) return { name: bot.name, color: bot.color, initial: bot.name[0].toUpperCase(), bot, avatar: bot.avatar, voiceId: bot.id };
     return { name: 'Nuero AI', color: MAIN_COLOR, initial: 'N', avatar: mainAvatar, voiceId: 'main' };
   }
+  // Family Nodes are the point of the app; the system helper is only the fallback
+  function defaultTarget() { return bots.length ? bots[0].id : MAIN; }
   function councilMembers() { return bots.filter(b => !excluded.has(b.id)); }
 
   function setAvatar(el, w) {
@@ -631,28 +646,39 @@
     };
     const lib = document.createElement('button');
     lib.type = 'button';
-    lib.className = 'nav-item lib' + (view === 'library' ? ' active' : '');
+    const unread = library.reduce((n, b) => n + (b.unread || 0), 0);
+    lib.className = 'nav-item lib' + (view === 'library' ? ' active' : '') + (unread ? ' has-new' : '');
     lib.innerHTML = '<div class="avatar">📚</div><div class="who"><div class="who-name">Library</div><div class="who-sub"></div></div>';
-    lib.querySelector('.who-sub').textContent = `${library.length} book${library.length === 1 ? '' : 's'}`;
+    lib.querySelector('.who-sub').textContent = unread
+      ? `${unread} new to see`
+      : `${library.length} book${library.length === 1 ? '' : 's'}`;
+    if (unread) {
+      const badge = document.createElement('span');
+      badge.className = 'new-badge';
+      badge.textContent = `✨ ${unread}`;
+      lib.appendChild(badge);
+    }
     lib.addEventListener('click', () => { showLibrary(); $('nav').classList.remove('open'); });
     list.append(lib);
-    list.append(label('Talk to'), item(MAIN, 'Main assistant · shared memory'),
-                item(COUNCIL, bots.length ? `${councilMembers().length} of ${bots.length} bots` : 'Add bots first'));
-    list.append(label(`Bots (${bots.length})`, ['+ New', () => openPanel('bots-panel', true)]));
+    // Family Nodes first; the main Nuero AI sits under System as the helper for the app itself
+    list.append(label(`Family Nodes (${bots.length})`, ['+ New', () => openPanel('bots-panel', true)]));
     if (!bots.length) {
       const e = document.createElement('div');
       e.className = 'nav-empty';
-      e.textContent = 'No bots yet. Click “+ New” to create one from its folder.';
+      e.textContent = 'No Family Nodes yet. Click “+ New” to create one from its folder.';
       list.appendChild(e);
     }
     for (const bot of bots) {
       const n = bot.folders.length;
       list.appendChild(item(bot.id, n ? `${n} folder${n > 1 ? 's' : ''} · private memory` : 'No folder yet'));
     }
+    list.append(label('Together'),
+                item(COUNCIL, bots.length ? `${councilMembers().length} of ${bots.length} Family Nodes` : 'Add Family Nodes first'));
+    list.append(label('System'), item(MAIN, 'System helper · how Nuero AI works'));
   }
 
   function selectTarget(t) {
-    if (t !== MAIN && t !== COUNCIL && !botById(t)) t = MAIN;
+    if (t !== MAIN && t !== COUNCIL && !botById(t)) t = defaultTarget();
     target = t;
     store.set('nuero-target', t);
     showChat();
@@ -670,7 +696,7 @@
     let sub;
     if (w.council) sub = `${councilMembers().length} member${councilMembers().length === 1 ? '' : 's'} · each answers from its own memory`;
     else if (w.bot) sub = `Private memory${w.bot.folders.length ? ' (' + w.bot.folders.length + ' folder' + (w.bot.folders.length > 1 ? 's' : '') + ')' : ''} + shared`;
-    else sub = 'Main assistant · shared memory';
+    else sub = 'System helper · ask how anything in Nuero AI works';
     $('head-sub').textContent = sub + ' · ' + aiLabel();
     $('members-btn').hidden = !w.council;
     if (!w.council) $('members').hidden = true;
@@ -756,20 +782,21 @@
     d.appendChild(h);
     const p = (text, cls) => { const el = document.createElement('p'); el.textContent = text; if (cls) el.className = cls; d.appendChild(el); };
     if (w.council) {
-      if (bots.length) p(`Ask a question and ${councilMembers().length} bots answer it side by side, each from its own memory.`);
+      if (bots.length) p(`Ask a question and ${councilMembers().length} Family Nodes answer it side by side, each from its own memory.`);
       else {
-        p('The council needs bots. Create them from their folders first.');
+        p('The council needs Family Nodes. Create them from their folders first.');
         const b = document.createElement('button');
-        b.className = 'btn'; b.type = 'button'; b.textContent = 'Create bots';
+        b.className = 'btn'; b.type = 'button'; b.textContent = 'Create Family Nodes';
         b.addEventListener('click', () => openPanel('bots-panel', true));
         d.appendChild(b);
       }
     } else if (w.bot) {
       if (w.bot.personality) p(w.bot.personality.length > 280 ? w.bot.personality.slice(0, 280) + '…' : w.bot.personality, 'persona');
-      else p('No personality written yet — add one in 🤖 Bots so this bot knows who it is.');
+      else p('No personality written yet — add one in 👪 Family Nodes so this Family Node knows who it is.');
       p(w.bot.folders.length ? 'Answers from its private folder memory plus shared memories.' : 'No folder yet — it only knows shared memories and what you save to it.');
     } else {
-      p('Your main assistant. It answers from the shared memories — the quick drop folder, shared watched folders, and anything saved here.');
+      p('The system helper. Ask how anything in Nuero AI works — creating Family Nodes, skills, the library, voices, privacy — and it answers from the built-in guide.');
+      p('Your Family Nodes are in the sidebar above.');
     }
     return d;
   }
@@ -923,7 +950,7 @@
     item.className = 'mem-item' + (m.gone ? ' gone' : '');
     const src = document.createElement('div');
     src.className = 'mem-src';
-    const owner = m.bot && m.bot !== 'shared' ? ((botById(m.bot) || {}).name || 'a bot') + "'s private memory" : 'Shared';
+    const owner = m.bot && m.bot !== 'shared' ? ((botById(m.bot) || {}).name || 'a Family Node') + "'s private memory" : 'Shared';
     const label = document.createElement('span');
     label.textContent = owner + ' · ' + (m.source || 'unknown');
     src.appendChild(label);
@@ -1043,7 +1070,10 @@
       const w = who(t);
       appendEntry(t, { type: 'ai', text: r.reply, ai: r.ai, memories: r.memories, bot: r.bot, name: w.name, color: w.color,
                        images: r.images, image_error: r.image_error, archived: r.archived, skill: r.skill, songs: r.songs });
-      if ((r.archived && r.archived.length) || (r.songs && r.songs.length)) loadLibrary();
+      if ((r.archived && r.archived.length) || (r.songs && r.songs.length)) {
+        loadLibrary();
+        toast(`✨ ${w.name} added something to your library`);
+      }
       if (t === target) speak(r.reply, false, w.voiceId);
     } catch (err) {
       appendEntry(t, { type: 'error', text: 'Error: ' + err.message });
@@ -1083,7 +1113,7 @@
   async function sendCouncil(text) {
     const members = councilMembers();
     if (!members.length) {
-      appendEntry(COUNCIL, { type: 'error', text: bots.length ? 'Pick at least one council member (Members ▾).' : 'Create some bots first (🤖 Bots).' });
+      appendEntry(COUNCIL, { type: 'error', text: bots.length ? 'Pick at least one council member (Members ▾).' : 'Create some Family Nodes first (👪 Family Nodes).' });
       return;
     }
     appendEntry(COUNCIL, { type: 'user', text });
@@ -1356,7 +1386,7 @@
     } catch (e) { bots = []; }
     for (const id of [...excluded]) if (!botById(id)) excluded.delete(id);
     renderFolderOwners();
-    if (target !== MAIN && target !== COUNCIL && !botById(target)) target = MAIN;
+    if (target !== MAIN && target !== COUNCIL && !botById(target)) target = defaultTarget();
     renderNav();
     renderHeader();
     renderBotList();
@@ -1539,7 +1569,7 @@
     msg.className = 'panel-msg';
     const title = document.createElement('div');
     title.style.fontWeight = '700';
-    title.textContent = 'Nuero AI (main assistant)';
+    title.textContent = 'Nuero AI (system helper)';
     const note = document.createElement('p');
     note.className = 'sub';
     note.style.margin = '0';
@@ -1552,7 +1582,7 @@
     renderMainCard();
     const list = $('bot-list');
     list.replaceChildren();
-    if (!bots.length) { list.innerHTML = '<p class="sub">No bots yet.</p>'; return; }
+    if (!bots.length) { list.innerHTML = '<p class="sub">No Family Nodes yet.</p>'; return; }
     for (const bot of bots) {
       const card = document.createElement('div');
       card.className = 'bot-card';
@@ -1561,11 +1591,11 @@
       const name = document.createElement('input');
       name.className = 'field';
       name.value = bot.name;
-      name.setAttribute('aria-label', 'Bot name');
+      name.setAttribute('aria-label', 'Family Node name');
       head.append(name);
       const folders = document.createElement('div');
       folders.className = 'bot-folders' + (bot.folders.length ? '' : ' none');
-      folders.textContent = bot.folders.length ? '📁 ' + bot.folders.join('\n📁 ') : 'No folder — add one in 🧠 Memory → Watched folders (choose this bot in the menu).';
+      folders.textContent = bot.folders.length ? '📁 ' + bot.folders.join('\n📁 ') : 'No folder — add one in 🧠 Memory → Watched folders (choose this Family Node in the menu).';
       folders.style.whiteSpace = 'pre-line';
       const persona = document.createElement('textarea');
       persona.className = 'field';
@@ -1590,7 +1620,7 @@
       actions.append(
         mk('Chat', 'plain', () => { closePanels(); selectTarget(bot.id); }),
         mk('Delete', 'danger', async () => {
-          if (!confirm(`Delete ${bot.name}?\n\nIts private memories are erased from Nuero AI and its folders stop being watched. The folders and files themselves are NOT touched, so you can re-create the bot later.`)) return;
+          if (!confirm(`Delete ${bot.name}?\n\nIts private memories are erased from Nuero AI and its folders stop being watched. The folders and files themselves are NOT touched, so you can re-create the Family Node later.`)) return;
           try {
             await api('/api/bots/delete', bot.id);
             store.del('nuero-thread:' + bot.id);
@@ -1659,6 +1689,19 @@
     if (view === 'library') renderLibrary();
   }
 
+  // Pages Family Nodes add from the terminal or another window still light up, within a minute;
+  // an open book is never redrawn under her
+  const unreadTotal = books => books.reduce((n, b) => n + (b.unread || 0), 0);
+  setInterval(async () => {
+    try {
+      const books = (await api('/api/library')).books;
+      if (unreadTotal(books) === unreadTotal(library) && books.length === library.length) return;
+      library = books;
+      renderNav();
+      if (view === 'library' && !openBookId) renderShelves();
+    } catch (e) { /* server restarting */ }
+  }, 60000);
+
   function showLibrary(bookId = null) {
     view = 'library';
     openBookId = bookId;
@@ -1677,7 +1720,7 @@
   function bookCover(b, onClick) {
     const el = document.createElement('button');
     el.type = 'button';
-    el.className = 'book' + (attachedFor(target).includes(b.id) ? ' attached' : '');
+    el.className = 'book' + (attachedFor(target).includes(b.id) ? ' attached' : '') + (b.unread ? ' unread' : '');
     el.style.setProperty('--bc', b.color);
     el.title = b.title + (attachedFor(target).includes(b.id) ? ` (attached to ${who(target).name})` : '');
     el.innerHTML = '<div class="b-emoji"></div><div class="b-title"></div><div class="b-count"></div>';
@@ -1686,6 +1729,13 @@
     el.querySelector('.b-count').textContent = b.kind === 'playlist'
       ? `${b.songs || 0} song${b.songs === 1 ? '' : 's'}`
       : `${b.count} page${b.count === 1 ? '' : 's'}` + (b.images ? ` · ${b.images} 🖼` : '') + (b.songs ? ` · ${b.songs} 🎵` : '');
+    if (b.unread) {
+      const badge = document.createElement('span');
+      badge.className = 'b-new';
+      badge.textContent = `✨ ${b.unread} new`;
+      el.appendChild(badge);
+      el.title += ` — ${b.unread} new from ${b.kind === 'user' ? 'your Family Nodes' : 'its Family Node'}`;
+    }
     if (onClick) el.addEventListener('click', onClick);
     return el;
   }
@@ -1717,9 +1767,9 @@
     };
     shelf('Your books', library.filter(b => b.kind === 'user' || b.kind === 'guide' || !b.kind), '', true);
     shelf('Playlists', library.filter(b => b.kind === 'playlist'),
-          'Every song a bot shares lands in its own playlist here.', false);
-    shelf('Bot archives', library.filter(b => b.kind === 'archive'),
-          'When a bot decides something is important enough to keep, its archive book appears here.', false);
+          'Every song a Family Node shares lands in its own playlist here.', false);
+    shelf('Family Node archives', library.filter(b => b.kind === 'archive'),
+          'When a Family Node decides something is important enough to keep, its archive book appears here.', false);
   }
 
   async function newBook() {
@@ -1769,7 +1819,7 @@
     const owner = book.kind === 'archive' ? (botById(book.bot) || {}).name || 'Nuero AI' : null;
     const usedBy = [MAIN, COUNCIL, ...bots.map(b => b.id)].filter(t => attachedFor(t).includes(book.id)).map(t => who(t).name);
     if (book.kind === 'guide') $('b-delete').hidden = true;
-    $('b-info').textContent = (book.kind === 'guide' ? 'Built-in: how Nuero AI works. Attach it to any bot so it can answer questions about the app. ' : '') +
+    $('b-info').textContent = (book.kind === 'guide' ? 'Built-in: how Nuero AI works. Attach it to any Family Node so it can answer questions about the app. ' : '') +
       (owner ? `${owner}'s own archive — it adds pages when something matters to it. ` : '') +
       `${book.items.length} page${book.items.length === 1 ? '' : 's'}` + (usedBy.length ? ` · attached to ${usedBy.join(', ')}` : ' · not attached to any conversation');
 
@@ -1839,7 +1889,7 @@
       for (const r of results) {
         const hit = document.createElement('div');
         hit.className = 'search-hit';
-        const ownerName = r.bot && r.bot !== 'shared' ? ((botById(r.bot) || {}).name || 'a bot') + "'s memory" : 'Shared';
+        const ownerName = r.bot && r.bot !== 'shared' ? ((botById(r.bot) || {}).name || 'a Family Node') + "'s memory" : 'Shared';
         hit.innerHTML = '<div class="mem-src"><span></span></div><div class="mem-text"></div><div class="hit-actions"></div>';
         hit.querySelector('.mem-src span').textContent = ownerName + ' · ' + (r.source || 'saved in chat');
         hit.querySelector('.mem-text').textContent = r.text.length > 300 ? r.text.slice(0, 300) + '…' : r.text;
@@ -1872,6 +1922,13 @@
       p.className = 'page';
       p.innerHTML = '<div class="page-head"><div><div class="page-title"></div><div class="page-meta"></div></div><button type="button" class="page-remove">Remove</button></div>';
       p.querySelector('.page-title').textContent = item.title;
+      if (item.unread) {
+        p.classList.add('new');
+        const tag = document.createElement('span');
+        tag.className = 'new-tag';
+        tag.textContent = '✨ New';
+        p.querySelector('.page-title').appendChild(tag);
+      }
       p.querySelector('.page-meta').textContent = [item.origin, item.source, new Date(item.added).toLocaleDateString()].filter(Boolean).join(' · ');
       p.querySelector('.page-remove').addEventListener('click', async () => {
         if (!confirm(`Remove “${item.title}” from this book?`)) return;
@@ -1896,6 +1953,18 @@
       pages.appendChild(p);
     }
     view_.appendChild(pages);
+
+    // Opening the book counts as seeing what Family Nodes added: the pages keep their ✨ tag for this
+    // visit, while the cover glow and sidebar count clear
+    if (book.items.some(i => i.unread)) {
+      try {
+        library = (await api('/api/library/books/seen', book.id)).books;
+        cover.classList.remove('unread');
+        const badge = cover.querySelector('.b-new');
+        if (badge) badge.remove();
+        renderNav();
+      } catch (err) { /* stays flagged; harmless */ }
+    }
   }
 
   // ---- picker dialog: choose one option, or several with multi ----

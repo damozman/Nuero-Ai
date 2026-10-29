@@ -23,9 +23,11 @@ def show_ai_options(pipeline):
 
 def show_bots(pipeline, current):
     bots = pipeline.bots.bots
-    print(f"\n  Talking to: {pipeline.bots.get(current)['name'] if current else 'Nuero AI (shared memories)'}")
-    print("  Bots: " + (", ".join(b["name"] for b in bots) if bots else "none yet - add them in the dashboard's Bots panel"))
-    print("  Switch with  /bot <name>   back to main with  /bot none   ask every bot with  /council <message>\n")
+    print(f"\n  Talking to: {pipeline.bots.get(current)['name'] if current else 'Nuero AI (system helper)'}")
+    print("  Family Nodes: " + (", ".join(b["name"] for b in bots) if bots
+                                else "none yet - add them in the dashboard's Family Nodes panel"))
+    print("  Switch with  /node <name>   back to the system helper with  /node none"
+          "   ask every Family Node with  /council <message>\n")
 
 
 def run_cli_chat():
@@ -35,7 +37,7 @@ def run_cli_chat():
     print("\n" + "="*50)
     print("  NUERO AI MEMORY PIPELINE OPERATIONAL")
     print(f"  Interactive Chat Mode Connected to {pipeline.describe()}")
-    print("  Type /ai to switch AI services and models, /bot to talk to a bot, /council to ask them all,")
+    print("  Type /ai to switch AI services and models, /node to talk to a Family Node, /council to ask them all,")
     print("  /image <description> to create a picture")
     print("="*50 + "\n")
 
@@ -54,20 +56,20 @@ def run_cli_chat():
                 else:
                     show_ai_options(pipeline)
                 continue
-            if command.startswith("/bot"):
-                hint = user_input.strip()[4:].strip()
+            if command.startswith(("/node", "/bot")):  # /bot still works as the old name
+                hint = user_input.strip().split(maxsplit=1)[1].strip() if " " in user_input.strip() else ""
                 if not hint:
                     show_bots(pipeline, current_bot)
-                elif hint.lower() in ("none", "main", "nuero"):
+                elif hint.lower() in ("none", "main", "nuero", "system"):
                     current_bot = None
-                    print("\n  Now talking to Nuero AI (shared memories)\n")
+                    print("\n  Now talking to Nuero AI (system helper)\n")
                 else:
                     bot = pipeline.bots.find(hint)
                     if bot:
                         current_bot = bot["id"]
                         print(f"\n  Now talking to {bot['name']}\n")
                     else:
-                        print(f"\n  No bot matching '{hint}'.\n")
+                        print(f"\n  No Family Node matching '{hint}'.\n")
                         show_bots(pipeline, current_bot)
                 continue
             if command.startswith("/image"):

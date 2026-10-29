@@ -56,7 +56,7 @@ def _daemon_or_error():
 
 def _check_bot(bot_id):
     if bot_id and bot_id != SHARED and not get_bots().get(bot_id):
-        raise ValueError(f"No bot called '{bot_id}'.")
+        raise ValueError(f"No Family Node called '{bot_id}'.")
     return bot_id or SHARED
 
 
@@ -102,7 +102,7 @@ def post_council(body: CouncilIn):
         return _error("Message is empty.")
     pipeline = get_pipeline()
     if not (body.bots or pipeline.bots.bots):
-        return _error("No bots yet. Add some in the Bots panel first.")
+        return _error("No Family Nodes yet. Add some in the Family Nodes panel first.")
 
     def lines():
         try:
@@ -148,6 +148,16 @@ def update_book(body: BookIn):
         return get_library().update_book(body.id, body.title, body.emoji, body.color)
     except ValueError as e:
         return _error(str(e))
+
+
+@app.post("/api/library/books/seen")
+def mark_book_seen(body: TextIn):
+    """She opened the book: clear the 'new' flags on pages Family Nodes added."""
+    try:
+        get_library().mark_seen(body.text)
+    except ValueError as e:
+        return _error(str(e))
+    return {"books": get_library().summaries()}
 
 
 @app.post("/api/library/books/delete")
@@ -308,9 +318,9 @@ def create_bot(body: BotCreateIn):
     try:
         folder = daemon.normalize_folder(body.folder) if body.folder and body.folder.strip() else None
         if folder and folder == daemon.vault_dir:
-            raise ValueError("The built-in vault folder is shared memory; pick a different folder for a bot.")
+            raise ValueError("The built-in vault folder is shared memory; pick a different folder for a Family Node.")
         if folder and daemon.owner_of_folder(folder) != SHARED and folder in daemon.extra_folders:
-            raise ValueError("That folder already belongs to another bot.")
+            raise ValueError("That folder already belongs to another Family Node.")
         name = (body.name or "").strip() or (os.path.basename(folder) if folder else "")
         personality = body.personality if body.personality and body.personality.strip() else (
             find_persona_text(folder) if folder else "")

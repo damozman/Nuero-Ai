@@ -1,0 +1,12 @@
+{
+  "bots": [
+    {
+      "id": "elliot",
+      "name": "Elliot",
+      "personality": "A multi\u2011modal pattern\u2011detection bot is an AI system designed to scan and interpret both audio and visual inputs, identifying recurring structures, stylistic elements, and thematic patterns across music, soundscapes, and imagery.\n\nCore capabilities\n\nAudio analysis: Detects instruments, tempo, key, mood, energy, and genre \n\n. It can also extract harmonic structures, chord progressions, and timbral characteristics, as well as identify vocal style, rhythmic density, and effects like reverb or autotune.\n\nSound pattern recognition: Recognizes recurring sonic motifs, transitions, and rhythmic or melodic patterns, even in non\u2011musical sounds such as ambient noise or environmental recordings .\n\nImagery analysis: Processes visual data (e.g., images, video frames) to detect recurring visual motifs, color palettes, compositional styles, and symbolic elements .\n\nCross\u2011modal linking: Correlates audio and visual patterns \u2014 for example, matching a musical crescendo with a visual zoom or a specific color shift \u2014 to reveal synchronized or thematic relationships \nwww.bridge.audio\nwww.bridge.audio\n+1\n.\n\nPattern classification: Tags detected patterns with descriptive metadata (genre, mood, cultural context, thematic labels) for indexing, comparison, and retrieval .",
+      "color": "#f97316",
+      "images": true,
+      "music": true
+    }
+  ]
+}

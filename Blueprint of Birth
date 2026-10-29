@@ -1,0 +1,386 @@
+
+📋 MASTER IMPLEMENTATION BLUEPRINT: PERSONAL AI MEMORY & IDENTITY PIPELINE
+
+
+Target System Environment: Local Hybrid Vector Vault with 3D WebGL Visualization
+
+
+🏗️ 1. ARCHITECTURE OVERSIGHT & FILE STRUCTURE
+
+Instruct the AI assistant to initialize a project repository with the following structure:
+text
+369_agentic_memory/
+│
+├── config/
+│   ├── identity_frequency.txt     # Core persona and system constraints
+│   └── masking_rules.json         # Dictionary for local text scrubbing
+│
+├── storage/
+│   ├── vault/                     # Drop-box for raw historical .txt, .md, .log files
+│   └── memory_vault.db            # Local Qdrant embedded database storage
+│
+├── daemons/
+│   └── watcher.py                 # File-system observer for automated ingestion
+│
+├── core/
+│   ├── scrubber.py                # Fast regex data mask / re-hydration layer
+│   ├── vector_engine.py           # Embeds data locally using sentence-transformers
+│   ├── pipeline.py                # Main orchestration layer connecting to Gemini API
+│   └── dashboard.py               # FastAPI backend for mapping vector nodes
+│
+├── templates/
+│   └── index.html                 # 3D Force-Graph WebGL frontend dashboard
+│
+├── requirements.txt               # Project dependencies
+└── main.py                        # System launchpad and interactive interface
+Use code with caution.
+
+📦 2. SYSTEM DEPENDENCIES (requirements.txt)
+
+Write the following dependencies into the project root:
+text
+google-genai==0.1.1
+qdrant-client==1.12.1
+sentence-transformers==3.0.1
+watchdog==4.0.1
+pydantic==2.7.4
+fastapi==0.115.0
+uvicorn==0.32.0
+Use code with caution.
+
+🛠️ 3. CORE PYTHON CODING SPECIFICATIONS
+
+
+A. The Local Privacy Scrubber (core/scrubber.py)
+
+python
+import re
+import json
+import os
+
+class MemoryScrubber:
+    def __init__(self, rules_path="config/masking_rules.json"):
+        self.rules_path = rules_path
+        self.mask_rules = {
+            r"\b\d{3}\s+S\.\s+Hulen\s+St\b.*?76133\b": "[LOCAL_HQ_ADDRESS]",
+            r"\b369\s+Agentic\s+Systems\b": "[PRIMARY_AI_AGENCY]",
+            r"\bChristopher\s+Wade\s+Mosley\b": "[FOUNDER_IDENTITY]"
+        }
+        self.reverse_rules = {v: k for k, v in self.mask_rules.items()}
+        self._load_rules()
+
+    def _load_rules(self):
+        if os.path.exists(self.rules_path):
+            with open(self.rules_path, "r") as f:
+                loaded = json.load(f)
+                self.mask_rules.update(loaded)
+                self.reverse_rules = {v: k for k, v in self.mask_rules.items()}
+
+    def mask(self, text: str) -> str:
+        masked_text = text
+        for pattern, replacement in self.mask_rules.items():
+            masked_text = re.sub(pattern, replacement, masked_text, flags=re.IGNORECASE)
+        return masked_text
+
+    def unmask(self, text: str) -> str:
+        unmasked_text = text
+        for token, original in self.reverse_rules.items():
+            unmasked_text = unmasked_text.replace(token, "369 Agentic Systems")
+        return unmasked_text
+Use code with caution.
+
+B. The Memory Vector Engine (core/vector_engine.py)
+
+python
+import uuid
+from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, VectorParams, PointStruct
+from sentence_transformers import SentenceTransformer
+
+class VectorMemoryVault:
+    def __init__(self, db_path="storage/memory_vault.db"):
+        self.client = QdrantClient(path=db_path)
+        self.encoder = SentenceTransformer("all-MiniLM-L6-v2")
+        self.collection_name = "agentic_memories"
+        self._ensure_collection()
+
+    def _ensure_collection(self):
+        if not self.client.collection_exists(self.collection_name):
+            self.client.create_collection(
+                collection_name=self.collection_name,
+                vectors_config=VectorParams(size=384, distance=Distance.COSINE)
+            )
+
+    def add_memory(self, text: str, metadata: dict = None):
+        chunks = [text[i:i+800] for i in range(0, len(text), 600)]
+        points = []
+        for chunk in chunks:
+            vector = self.encoder.encode(chunk).tolist()
+            points.append(PointStruct(
+                id=str(uuid.uuid4()),
+                vector=vector,
+                payload={"text": chunk, "metadata": metadata or {}}
+            ))
+        self.client.upsert(collection_name=self.collection_name, points=points)
+
+    def query_memories(self, query_text: str, limit=3) -> str:
+        query_vector = self.encoder.encode(query_text).tolist()
+        results = self.client.search(
+            collection_name=self.collection_name,
+            query_vector=query_vector,
+            limit=limit
+        )
+        return "\n---\n".join([res.payload["text"] for res in results])
+
+    def fetch_all_nodes_and_edges(self):
+        """Extracts database items to calculate clusters and neural link connections."""
+        records, _ = self.client.scroll(collection_name=self.collection_name, limit=1000, with_vectors=True)
+        nodes = []
+        edges = []
+        
+        for idx, rec in enumerate(records):
+            text_snippet = rec.payload.get("text", "")[:60] + "..."
+            source = rec.payload.get("metadata", {}).get("source", "Manual Input")
+            
+            # Grouping colors dynamically by metadata contents
+            group = 1 if "watcher" in str(source).lower() else (2 if "code" in str(source).lower() else 3)
+            
+            nodes.append({
+                "id": rec.id,
+                "label": text_snippet,
+                "val": 15,
+                "group": group,
+                "full_text": rec.payload.get("text", "")
+            })
+            
+            # Create synapses to nearest neighbors based on directional similarity vectors
+            if rec.vector:
+                neighbors = self.client.search(
+                    collection_name=self.collection_name,
+                    query_vector=rec.vector,
+                    limit=3
+                )
+                for nbr in neighbors:
+                    if nbr.id != rec.id and nbr.score > 0.7:
+                        edges.append({"source": rec.id, "target": nbr.id})
+                        
+        return {"nodes": nodes, "links": edges}
+Use code with caution.
+
+C. Identity Router & Pipeline Execution (core/pipeline.py)
+
+python
+import os
+from google import genai
+from core.scrubber import MemoryScrubber
+from core.vector_engine import VectorMemoryVault
+
+class AgenticPipeline:
+    def __init__(self):
+        self.scrubber = MemoryScrubber()
+        self.vault = VectorMemoryVault()
+        self.client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+        
+    def _get_identity_frequency(self) -> str:
+        path = "config/identity_frequency.txt"
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                return f.read()
+        return "You are an advanced, personal, responsive AI core assistant."
+
+    def chat(self, user_input: str) -> str:
+        raw_context = self.vault.query_memories(user_input, limit=3)
+        masked_context = self.scrubber.mask(raw_context)
+        masked_prompt = self.scrubber.mask(user_input)
+        identity_frequency = self.scrubber.mask(self._get_identity_frequency())
+
+        system_instruction = f"""
+        {identity_frequency}
+
+        [SECURE RETRIEVED MEMORY MATRIX]:
+        {masked_context}
+        """
+
+        response = self.client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=masked_prompt,
+            config={"system_instruction": system_instruction}
+        )
+
+        return self.scrubber.unmask(response.text)
+Use code with caution.
+
+D. The Visual Backend & Dashboard (core/dashboard.py)
+
+python
+import uvicorn
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
+from core.vector_engine import VectorMemoryVault
+
+app = FastAPI()
+vault = VectorMemoryVault()
+
+@app.get("/api/network")
+def get_network():
+    return vault.fetch_all_nodes_and_edges()
+
+@app.get("/", response_class=HTMLResponse)
+def get_dashboard():
+    with open("templates/index.html", "r", encoding="utf-8") as f:
+        return f.read()
+
+def run_dashboard():
+    uvicorn.run(app, host="127.0.0.1", port=8050, log_level="warning")
+Use code with caution.
+
+E. The Growth Daemon (daemons/watcher.py)
+
+python
+import os
+import time
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+from core.vector_engine import VectorMemoryVault
+
+class MemoryFileHandler(FileSystemEventHandler):
+    def __init__(self):
+        self.vault = VectorMemoryVault()
+
+    def on_created(self, event):
+        if not event.is_directory and event.src_path.endswith(('.txt', '.md', '.log')):
+            time.sleep(1)
+            with open(event.src_path, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+                self.vault.add_memory(content, metadata={"source": f"watcher:{event.src_path}"})
+                print(f"\n[DAEMON]: Automatically ingested new neuron node from: {os.path.basename(event.src_path)}")
+
+def start_memory_daemon():
+    path = "storage/vault/"
+    os.makedirs(path, exist_ok=True)
+    observer = Observer()
+    observer.schedule(MemoryFileHandler(), path=path, recursive=False)
+    observer.start()
+    print(f"[DAEMON]: Active. Monitoring local vault folder: '{path}'...")
+    return observer
+Use code with caution.
+
+🎨 4. THE 3D NEURON BRAIN FRONTEND UI (templates/index.html)
+
+html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>3D AI Neuron Brain Dashboard</title>
+  <script src="https://unpkg.com"></script>
+  <style>
+    body { margin: 0; background-color: #05050a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; color: #fff; }
+    #sidebar { position: absolute; top: 20px; right: 20px; width: 350px; max-height: 85vh; background: rgba(10, 10, 20, 0.85); border: 1px solid rgba(0, 150, 255, 0.2); border-radius: 12px; padding: 20px; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px); overflow-y: auto; z-index: 10; display: none; }
+    #title-card { position: absolute; top: 20px; left: 20px; background: rgba(5, 5, 10, 0.7); padding: 15px; border-radius: 8px; border-left: 4px solid #0096ff; z-index: 10; }
+    h2 { margin-top: 0; color: #0096ff; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; }
+    .node-text { font-size: 0.9rem; line-height: 1.4; color: #d1d5db; white-space: pre-wrap; }
+    .close-btn { float: right; cursor: pointer; color: #ef4444; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <div id="title-card">
+    <div style="font-weight: bold; font-size: 1.1rem;">369 AGENTIC BRAIN MATRIX</div>
+    <div style="font-size: 0.8rem; color: #888;">Live WebGL Neural Sync Layer</div>
+  </div>
+
+  <div id="sidebar">
+    <span class="close-btn" onclick="document.getElementById('sidebar').style.display='none'">✕</span>
+    <h2>Neuron Node Trajectory</h2>
+    <div id="node-content" class="node-text">Select an active neural cell to expand core payload...</div>
+  </div>
+
+  <div id="3d-graph"></div>
+
+  <script>
+    const sidebar = document.getElementById('sidebar');
+    const content = document.getElementById('node-content');
+
+    const Graph = Box = ForceGraph3D()(document.getElementById('3d-graph'))
+      .jsonUrl('/api/network')
+      .nodeLabel('label')
+      .nodeAutoColorBy('group')
+      .linkDirectionalParticles(2)
+      .linkDirectionalParticleSpeed(0.005)
+      .linkColor(() => 'rgba(255,255,255,0.08)')
+      .onNodeClick(node => {
+        // Target tracking physics camera zoom focus execution
+        const distance = 80;
+        const distRatio = 1 + distance/Math.hypot(node.x, node.y, node.z);
+        Graph.cameraPosition({ x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }, node, 3000);
+        
+        // Open Glassmorphic Sidebar Dashboard View
+        content.innerText = node.full_text;
+        sidebar.style.display = 'block';
+      });
+
+    // Run custom slow breathing cycle expansion pulse mimicking an Alpha Brainwave frequency
+    let angle = 0;
+    setInterval(() => {
+      angle += 0.03;
+      Graph.d3Force('charge').strength(-30 + Math.sin(angle) * 10);
+    }, 50);
+  </script>
+</body>
+</html>
+Use code with caution.
+
+🏁 5. MASTER EXECUTION APPLICATION INTERFACE (main.py)
+
+python
+import os
+import threading
+from daemons.watcher import start_memory_daemon
+from core.dashboard import run_dashboard
+from core.pipeline import AgenticPipeline
+
+def run_cli_chat():
+    pipeline = AgenticPipeline()
+    print("\n" + "="*50)
+    print("  369 AGENTIC MEMORY PIPELINE OPERATIONAL")
+    print("  Interactive Chat Mode Connected to Gemini 2.5 Flash")
+    print("="*50 + "\n")
+    
+    while True:
+        try:
+            user_input = input("You: ")
+            if user_input.strip().lower() in ['exit', 'quit']:
+                break
+            if not user_input.strip():
+                continue
+                
+            response = pipeline.chat(user_input)
+            print(f"\nAI: {response}\n" + "-"*50 + "\n")
+        except KeyboardInterrupt:
+            break
+
+if __name__ == "__main__":
+    # 1. Establish structural directories before booting daemons
+    os.makedirs("storage/vault", exist_ok=True)
+    os.makedirs("config", exist_ok=True)
+    
+    # Pre-seed fallback baseline identity if missing
+    if not os.path.exists("config/identity_frequency.txt"):
+        with open("config/identity_frequency.txt", "w") as f:
+            f.write("You are 369 Agentic Systems Core. An advanced technical partner specialized in scalable digital worker deployments.")
+
+    # 2. Spin up File-System Watcher as an isolated background task
+    observer = start_memory_daemon()
+    
+    # 3. Spin up WebGL Visualization Server in a concurrent execution thread
+    dashboard_thread = threading.Thread(target=run_dashboard, daemon=True)
+    dashboard_thread.start()
+    print("[DASHBOARD]: Interactive WebGL interface hosted online at http://127.0.0.1:8050")
+    
+    # 4. Trigger Interactive Control Panel Terminal Loop directly
+    run_cli_chat()
+    
+    # Clean termination sequence
+    observer.stop()
+    observer.join()
+Use code with caution.

@@ -1,0 +1,4 @@
+{
+  "\\b\\d{3}\\s+S\\.\\s+Hulen\\s+St\\b.*?76133\\b": "[PRIVATE_ADDRESS]",
+  "\\bChristopher\\s+Wade\\s+Mosley\\b": "[USER_IDENTITY]"
+}

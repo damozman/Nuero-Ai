@@ -1,0 +1,10 @@
+google-genai>=1.0.0
+anthropic>=2.3.0
+xai-sdk>=1.21.0
+qdrant-client>=1.12.1
+sentence-transformers>=3.0.1
+watchdog>=4.0.1
+pydantic>=2.7.4
+fastapi>=0.115.0
+uvicorn>=0.32.0
+numpy

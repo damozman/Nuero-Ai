@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Nuero AI Memory Graph</title>
+  <script src="https://unpkg.com/3d-force-graph@1.73.4/dist/3d-force-graph.min.js"></script>
+  <style>
+    body { margin: 0; background-color: #05050a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; color: #fff; }
+    #title-card { position: absolute; top: 20px; left: 20px; background: rgba(5, 5, 10, 0.7); padding: 15px; border-radius: 8px; border-left: 4px solid #0096ff; z-index: 10; }
+    #title-card a { color: #93c5fd; font-size: 0.8rem; }
+    #sidebar { position: absolute; top: 20px; right: 20px; width: 350px; max-height: 85vh; background: rgba(10, 10, 20, 0.85); border: 1px solid rgba(0, 150, 255, 0.2); border-radius: 12px; padding: 20px; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px); overflow-y: auto; z-index: 10; display: none; }
+    h2 { margin-top: 0; color: #0096ff; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; }
+    #node-source { font-size: 0.78rem; color: #888; margin: -6px 0 12px; word-break: break-all; }
+    .node-text { font-size: 0.9rem; line-height: 1.4; color: #d1d5db; white-space: pre-wrap; }
+    .close-btn { float: right; cursor: pointer; color: #ef4444; font-weight: bold; }
+    #forget-btn { margin-top: 16px; width: 100%; padding: 8px; background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; font: inherit; font-size: 0.85rem; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div id="title-card">
+    <div style="font-weight: bold; font-size: 1.1rem;">NUERO AI MEMORY GRAPH</div>
+    <div style="font-size: 0.8rem; color: #888;">Each point is a memory chunk · lines join similar memories · bots in their own colors</div>
+    <a href="/">← Back to the chat dashboard</a>
+  </div>
+
+  <div id="sidebar">
+    <span class="close-btn" onclick="document.getElementById('sidebar').style.display='none'">✕</span>
+    <h2>Memory</h2>
+    <div id="node-source"></div>
+    <div id="node-content" class="node-text"></div>
+    <button type="button" id="forget-btn">Forget this memory</button>
+  </div>
+
+  <div id="3d-graph"></div>
+
+  <script>
+    const sidebar = document.getElementById('sidebar');
+    const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const GROUP_COLORS = { 1: '#00b4ff', 2: '#a78bfa', 3: '#34d399', 4: '#f472b6' };
+    let bots = {};
+    let selected = null;
+
+    const Graph = ForceGraph3D()(document.getElementById('3d-graph'))
+      .nodeLabel(node => escapeHtml(node.label))
+      .nodeColor(node => (bots[node.bot] && bots[node.bot].color) || GROUP_COLORS[node.group] || '#9ca3af')
+      .linkDirectionalParticles(2)
+      .linkDirectionalParticleSpeed(0.005)
+      .linkColor(() => 'rgba(255,255,255,0.08)')
+      .onNodeClick(node => {
+        const distRatio = 1 + 80 / (Math.hypot(node.x, node.y, node.z) || 1);
+        Graph.cameraPosition({ x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }, node, 3000);
+        selected = node;
+        const owner = bots[node.bot] ? bots[node.bot].name + "'s private memory" : 'Shared memory';
+        document.getElementById('node-source').textContent = owner + ' · ' + (node.source || 'unknown');
+        document.getElementById('node-content').innerText = node.full_text;
+        sidebar.style.display = 'block';
+      });
+
+    document.getElementById('forget-btn').addEventListener('click', async () => {
+      if (!selected || !confirm('Forget this memory? Your files are not touched.')) return;
+      await fetch('/api/memory/forget', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: String(selected.id) }) });
+      sidebar.style.display = 'none';
+      load();
+    });
+
+    async function load() {
+      try {
+        const list = await (await fetch('/api/bots')).json();
+        bots = Object.fromEntries(list.bots.map(b => [b.id, b]));
+      } catch (e) { bots = {}; }
+      Graph.graphData(await (await fetch('/api/network')).json());
+    }
+    load();
+
+    // Slow breathing pulse
+    let angle = 0;
+    setInterval(() => {
+      angle += 0.03;
+      Graph.d3Force('charge').strength(-30 + Math.sin(angle) * 10);
+      Graph.d3ReheatSimulation();
+    }, 50);
+  </script>
+</body>
+</html>

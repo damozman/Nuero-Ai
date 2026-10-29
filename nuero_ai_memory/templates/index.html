@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nuero AI</title>
+  <style>
+    :root {
+      --bg: #07070d; --panel: #0c0c16; --panel-2: #121220; --line: rgba(0, 150, 255, 0.16);
+      --accent: #0096ff; --accent-soft: rgba(0, 150, 255, 0.18); --text: #e5e7eb; --muted: #8b93a1;
+      --danger: #ef4444; --ok: #86efac;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; height: 100vh; overflow: hidden; }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+
+    #app { display: grid; grid-template-columns: 280px minmax(0, 1fr); height: 100vh; }
+
+    /* ---------- left navigation ---------- */
+    #nav { display: flex; flex-direction: column; background: var(--panel); border-right: 1px solid var(--line); min-height: 0; }
+    .brand { padding: 18px 18px 14px; border-bottom: 1px solid var(--line); }
+    .brand-name { font-weight: 800; letter-spacing: 2px; font-size: 1.05rem; }
+    .brand-sub { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+    #nav-list { flex: 1; overflow-y: auto; padding: 10px 10px 4px; }
+    .nav-label { font-size: 0.7rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin: 12px 8px 6px; display: flex; justify-content: space-between; align-items: center; }
+    .nav-label button { background: none; border: none; color: var(--accent); font-size: 0.75rem; letter-spacing: 0; text-transform: none; padding: 0; }
+    .nav-item { width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: none; background: none; border-radius: 10px; text-align: left; }
+    .nav-item:hover { background: rgba(255, 255, 255, 0.04); }
+    .nav-item.active { background: var(--accent-soft); }
+    .nav-item .who { min-width: 0; }
+    .nav-item .who-name { font-size: 0.9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .nav-item .who-sub { font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .nav-item .busy-dot { margin-left: auto; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: blink 1s infinite; flex-shrink: 0; }
+    .nav-empty { font-size: 0.8rem; color: var(--muted); padding: 4px 10px 8px; }
+    .nav-bottom { border-top: 1px solid var(--line); padding: 12px 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+    .ai-row { display: flex; gap: 6px; }
+    .ai-row select { min-width: 0; }
+    #provider-select { flex: 0 0 auto; }
+    #model-select { flex: 1; }
+    .nav-tools { display: flex; gap: 6px; }
+    .nav-tools button { flex: 1; padding: 7px 4px; font-size: 0.78rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); border-radius: 8px; }
+    .nav-tools button:hover { background: rgba(255, 255, 255, 0.09); }
+
+    .avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 0.9rem; color: #0a0a12; flex-shrink: 0; background: var(--c, var(--accent)); }
+    .avatar.lg { width: 42px; height: 42px; font-size: 1.05rem; }
+    .avatar.council { background: linear-gradient(135deg, #f97316, #c084fc, #22d3ee); }
+
+    /* ---------- main chat ---------- */
+    #chat { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+    #chat-head { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); }
+    #menu-btn { display: none; background: none; border: none; font-size: 1.3rem; padding: 0 4px; }
+    .head-text { min-width: 0; }
+    #head-title { font-weight: 700; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #head-sub { font-size: 0.78rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .head-actions { flex-shrink: 0; }
+    .head-actions { margin-left: auto; display: flex; gap: 8px; }
+    .chip { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: 0.78rem; }
+    .chip:hover { background: rgba(255, 255, 255, 0.09); }
+    .chip.on { background: var(--accent-soft); border-color: var(--accent); }
+    #members { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 20px; border-bottom: 1px solid var(--line); background: var(--panel-2); font-size: 0.82rem; }
+    #members[hidden] { display: none; }
+    #members label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+    #members .members-actions { width: 100%; display: flex; gap: 12px; font-size: 0.75rem; }
+    #members .members-actions button { background: none; border: none; color: var(--accent); padding: 0; }
+
+    #thread { flex: 1; overflow-y: auto; }
+    .thread-inner { max-width: 900px; margin: 0 auto; padding: 22px 20px 30px; display: flex; flex-direction: column; gap: 16px; }
+
+    .msg { max-width: 80%; line-height: 1.55; font-size: 0.94rem; }
+    .msg.user { align-self: flex-end; background: var(--accent-soft); border: 1px solid rgba(0, 150, 255, 0.3); padding: 10px 14px; border-radius: 16px 16px 4px 16px; white-space: pre-wrap; word-wrap: break-word; }
+    .msg.ai { align-self: flex-start; background: var(--panel-2); border: 1px solid rgba(255, 255, 255, 0.06); border-left: 3px solid var(--c, var(--accent)); padding: 10px 14px 8px; border-radius: 4px 16px 16px 16px; }
+    .msg.system { align-self: center; color: var(--muted); font-size: 0.8rem; font-style: italic; max-width: 90%; text-align: center; }
+    .msg.error { align-self: flex-start; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); color: #fca5a5; padding: 10px 14px; border-radius: 12px; }
+    .msg-head { display: flex; align-items: center; gap: 7px; font-size: 0.78rem; font-weight: 700; color: var(--c, #93c5fd); margin-bottom: 4px; }
+    .msg-head .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--accent)); }
+    .msg-foot { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; margin-top: 8px; font-size: 0.72rem; color: var(--muted); }
+    .msg-foot button { background: none; border: none; color: #93c5fd; padding: 0; font-size: 0.72rem; }
+    .mem-list { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+    .mem-list[hidden] { display: none; }
+    .mem-item { background: rgba(0, 0, 0, 0.3); border-radius: 8px; padding: 8px 10px; font-size: 0.8rem; }
+    .mem-item.gone { opacity: 0.45; text-decoration: line-through; }
+    .mem-src { font-size: 0.7rem; color: var(--muted); margin-bottom: 3px; display: flex; justify-content: space-between; gap: 8px; word-break: break-all; }
+    .mem-src button { background: none; border: none; color: #fca5a5; padding: 0; font-size: 0.7rem; flex-shrink: 0; }
+    .mem-text { white-space: pre-wrap; color: #c9ced6; }
+
+    .md p { margin: 0 0 8px; } .md p:last-child { margin-bottom: 0; }
+    .md .md-h { font-weight: 700; margin: 10px 0 4px; color: #fff; }
+    .md ul { margin: 4px 0 8px; padding-left: 20px; }
+    .md code { background: rgba(255, 255, 255, 0.08); padding: 1px 5px; border-radius: 4px; font-size: 0.86em; }
+    .md pre { background: rgba(0, 0, 0, 0.45); padding: 10px 12px; border-radius: 8px; overflow-x: auto; margin: 6px 0 8px; }
+    .md pre code { background: none; padding: 0; }
+
+    .msg-img { margin: 8px 0 2px; }
+    .msg-img a { display: block; }
+    .msg-img img { display: block; max-width: 100%; max-height: 420px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(0, 0, 0, 0.3); }
+    .msg-img figcaption { font-size: 0.75rem; color: var(--muted); margin-top: 5px; }
+    .img-note { font-size: 0.78rem; color: #fca5a5; margin-top: 6px; }
+    #image-btn { width: 40px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.06); }
+    .check { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: #c9ced6; cursor: pointer; }
+    .settings-grid { display: grid; grid-template-columns: auto 1fr; gap: 8px 10px; align-items: center; font-size: 0.82rem; }
+    .settings-grid input[type=number] { width: 90px; }
+    .council { align-self: stretch; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+    .council .msg.ai { max-width: none; }
+    .council .pending { color: var(--muted); font-size: 0.85rem; }
+    .typing { align-self: flex-start; display: flex; gap: 4px; padding: 12px 14px; background: var(--panel-2); border-radius: 4px 16px 16px 16px; }
+    .typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: blink 1.2s infinite; }
+    .typing span:nth-child(2) { animation-delay: 0.2s; } .typing span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+
+    .welcome { align-self: center; text-align: center; max-width: 560px; margin-top: 8vh; color: var(--muted); }
+    .welcome .avatar { margin: 0 auto 12px; width: 64px; height: 64px; font-size: 1.6rem; }
+    .welcome h2 { color: var(--text); margin: 0 0 6px; font-size: 1.3rem; }
+    .welcome p { font-size: 0.9rem; line-height: 1.55; margin: 6px 0; }
+    .welcome .persona { font-style: italic; color: #c9ced6; white-space: pre-wrap; }
+    .welcome .btn { margin-top: 10px; }
+
+    #composer { border-top: 1px solid var(--line); background: var(--panel); padding: 12px 20px 14px; }
+    .composer-inner { max-width: 900px; margin: 0 auto; }
+    #chat-input { width: 100%; resize: none; min-height: 52px; max-height: 200px; background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(0, 150, 255, 0.3); border-radius: 12px; padding: 12px 14px; font-size: 0.94rem; line-height: 1.4; }
+    #chat-input:focus { outline: none; border-color: var(--accent); }
+    .composer-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+    #save-hint { font-size: 0.74rem; color: var(--muted); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #mic-btn { width: 40px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.06); }
+    #mic-btn.listening { background: var(--danger); animation: pulse 1.2s ease-in-out infinite; }
+    @keyframes pulse { 50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.3); } }
+    #save-btn { padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.06); font-size: 0.85rem; }
+    #send-btn { padding: 8px 20px; border-radius: 10px; border: none; background: var(--accent); color: #fff; font-weight: 700; font-size: 0.88rem; }
+    #composer button:disabled { opacity: 0.5; cursor: wait; }
+
+    /* ---------- shared form bits ---------- */
+    select, .field { background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(0, 150, 255, 0.3); border-radius: 8px; padding: 7px 9px; font-size: 0.82rem; }
+    select option { background: #0a0a14; }
+    .field { width: 100%; }
+    .field:focus, select:focus { outline: none; border-color: var(--accent); }
+    textarea.field { resize: vertical; min-height: 110px; line-height: 1.45; }
+    .btn { background: var(--accent-soft); border: 1px solid rgba(0, 150, 255, 0.45); border-radius: 8px; padding: 7px 12px; font-size: 0.82rem; }
+    .btn:hover { background: rgba(0, 150, 255, 0.28); }
+    .btn:disabled { opacity: 0.5; cursor: wait; }
+    .btn.danger { background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.45); color: #fca5a5; }
+    .btn.plain { background: none; border-color: rgba(255, 255, 255, 0.15); color: var(--muted); }
+
+    /* ---------- slide-out panels ---------- */
+    .side-panel { position: fixed; top: 0; right: 0; height: 100vh; width: 460px; max-width: 100vw; z-index: 30; background: rgba(9, 9, 18, 0.98); border-left: 1px solid var(--line); box-shadow: -10px 0 40px rgba(0, 0, 0, 0.6); padding: 22px 24px 40px; overflow-y: auto; transform: translateX(100%); transition: transform 0.25s ease; }
+    .side-panel.open { transform: translateX(0); }
+    .side-panel h2 { display: flex; justify-content: space-between; align-items: center; margin: 0 0 4px; font-size: 1.15rem; }
+    .side-panel h3 { font-size: 0.92rem; margin: 22px 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+    .side-panel p, .side-panel li { font-size: 0.86rem; line-height: 1.55; color: #c9ced6; }
+    .side-panel ul { padding-left: 18px; margin: 6px 0; }
+    .side-panel li { margin-bottom: 5px; }
+    .side-panel b { color: #fff; }
+    .side-panel code { background: rgba(255, 255, 255, 0.08); padding: 1px 5px; border-radius: 4px; font-size: 0.8rem; color: #93c5fd; }
+    .panel-close { background: none; border: none; color: var(--danger); font-size: 1.05rem; font-weight: bold; }
+    .sub { color: var(--muted) !important; font-size: 0.8rem !important; }
+    .form-stack { display: flex; flex-direction: column; gap: 8px; }
+    .panel-msg { font-size: 0.8rem; min-height: 1em; margin: 6px 0; }
+    .bot-card { background: rgba(255, 255, 255, 0.035); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px; padding: 12px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .bot-card-head { display: flex; gap: 10px; align-items: center; }
+    .bot-card-head .field { flex: 1; font-weight: 600; }
+    .bot-folders { font-size: 0.75rem; color: #93c5fd; word-break: break-all; }
+    .bot-folders.none { color: var(--muted); font-style: italic; }
+    .bot-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+    .path-box { display: flex; gap: 6px; align-items: stretch; margin: 8px 0; }
+    .path-box code { flex: 1; display: block; padding: 8px 10px !important; word-break: break-all; line-height: 1.4; }
+    .path-box .field { flex: 1; min-width: 0; }
+    .path-box select { flex: 0 0 auto; max-width: 140px; }
+    #folder-list { list-style: none; padding: 0 !important; }
+    #folder-list li { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; background: rgba(255, 255, 255, 0.04); border-radius: 8px; padding: 7px 10px; }
+    .fpath { flex: 1; min-width: 0; word-break: break-all; font-size: 0.78rem; color: #93c5fd; }
+    .ftag { font-size: 0.7rem; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+    .fremove { background: none; border: none; color: #fca5a5; font-size: 0.75rem; }
+    .fchoice { display: flex; gap: 6px; width: 100%; }
+    .fchoice button { flex: 1; font-size: 0.74rem; padding: 5px 4px; }
+
+    @media (max-width: 760px) {
+      #app { grid-template-columns: minmax(0, 1fr); }
+      #save-hint { display: none; }
+      .head-actions { gap: 4px; }
+      .chip { padding: 5px 9px; }
+      #nav { position: fixed; z-index: 25; top: 0; left: 0; bottom: 0; width: 280px; transform: translateX(-100%); transition: transform 0.25s ease; }
+      #nav.open { transform: translateX(0); box-shadow: 10px 0 40px rgba(0, 0, 0, 0.6); }
+      #menu-btn { display: block; }
+      .msg { max-width: 92%; }
+      #chat-head, #composer { padding-left: 12px; padding-right: 12px; }
+      .head-actions .chip span { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <aside id="nav">
+    <div class="brand">
+      <div class="brand-name">NUERO AI</div>
+      <div class="brand-sub">Personal AI with private memory</div>
+    </div>
+    <div id="nav-list"></div>
+    <div class="nav-bottom">
+      <div class="nav-label" style="margin:0 2px">AI service</div>
+      <div class="ai-row" title="Which AI service and model answers (applies to every bot)">
+        <select id="provider-select" aria-label="AI service"></select>
+        <select id="model-select" aria-label="Model"></select>
+      </div>
+      <div class="nav-tools">
+        <button type="button" data-panel="bots-panel">🤖 Bots</button>
+        <button type="button" data-panel="memory-panel">🧠 Memory</button>
+        <button type="button" data-panel="help-panel">? Help</button>
+      </div>
+    </div>
+  </aside>
+
+  <main id="chat">
+    <header id="chat-head">
+      <button type="button" id="menu-btn" aria-label="Menu">☰</button>
+      <div id="head-avatar" class="avatar lg"></div>
+      <div class="head-text">
+        <div id="head-title"></div>
+        <div id="head-sub"></div>
+      </div>
+      <div class="head-actions">
+        <button type="button" id="members-btn" class="chip" hidden>Members ▾</button>
+        <button type="button" id="voice-btn" class="chip" title="Read replies aloud">🔇 <span>Voice off</span></button>
+        <button type="button" id="clear-btn" class="chip" title="Clear this conversation's history">🗑 <span>Clear</span></button>
+      </div>
+    </header>
+    <div id="members" hidden></div>
+    <div id="thread"><div class="thread-inner" id="thread-inner"></div></div>
+    <form id="composer">
+      <div class="composer-inner">
+        <textarea id="chat-input" rows="1" placeholder="Message… (Enter to send, Shift+Enter for a new line)"></textarea>
+        <div class="composer-row">
+          <button type="button" id="mic-btn" title="Speak your message">🎤</button>
+          <button type="button" id="image-btn" title="Create an image from what you typed (or type /image …)">🎨</button>
+          <span id="save-hint"></span>
+          <button type="button" id="save-btn" title="Store this text as a memory without asking the AI">Save as memory</button>
+          <button type="submit" id="send-btn">Send</button>
+        </div>
+      </div>
+    </form>
+  </main>
+</div>
+
+<!-- ---------- Bots panel ---------- -->
+<aside id="bots-panel" class="side-panel" aria-label="Bots">
+  <h2>Bots <button type="button" class="panel-close" data-close title="Close (Esc)">✕</button></h2>
+  <p class="sub">Each bot has its own personality and its own private memory, fed by its folder. Every bot can also use the shared memories. Bots never see each other's private memories — not even in Council.</p>
+
+  <h3>➕ Add a bot</h3>
+  <div class="form-stack">
+    <input id="new-bot-folder" class="field" type="text" placeholder="Bot's folder — paste the path (optional)">
+    <input id="new-bot-name" class="field" type="text" placeholder="Name (blank = use the folder's name)">
+    <button type="button" id="new-bot-add" class="btn">Create bot</button>
+  </div>
+  <p id="bot-msg" class="panel-msg"></p>
+  <p class="sub">In File Explorer, right-click the bot's folder → <b>Copy as path</b>. Everything in it (subfolders too) becomes that bot's private memory. A file in it named like <code>persona</code>, <code>personality</code>, <code>identity</code> or <code>instructions</code> (.txt/.md) is used as the starting personality.</p>
+
+  <h3>🤖 Your bots</h3>
+  <div id="bot-list"><p class="sub">Loading…</p></div>
+
+  <h3>🎨 Images</h3>
+  <div class="settings-grid">
+    <span>Created with</span>
+    <select id="image-provider" aria-label="Image service"></select>
+    <span>Daily limit</span>
+    <span><input id="image-cap" class="field" type="number" min="0" max="500"> <span id="image-used" class="sub"></span></span>
+  </div>
+  <label class="check" style="margin-top:10px"><input id="image-main" type="checkbox"> Nuero AI (main) can create images on its own</label>
+  <div class="bot-actions" style="margin-top:8px"><button type="button" id="image-save" class="btn">Save image settings</button></div>
+  <p id="image-msg" class="panel-msg"></p>
+  <p class="sub">The daily limit only counts images bots decide to create themselves — not ones you ask for. Each bot also has its own on/off switch above. Bots never create images in Council. Images need a Gemini or Grok key (Claude can't make images); each one costs a few cents.</p>
+</aside>
+
+<!-- ---------- Memory panel ---------- -->
+<aside id="memory-panel" class="side-panel" aria-label="Memory">
+  <h2>Memory <button type="button" class="panel-close" data-close title="Close (Esc)">✕</button></h2>
+  <p class="sub">Everything Nuero AI remembers lives on this computer. Memories are either <b>shared</b> (every bot can use them) or <b>private</b> to one bot.</p>
+
+  <h3>📁 Watched folders</h3>
+  <ul id="folder-list"><li class="sub">Loading…</li></ul>
+  <div class="path-box">
+    <input id="folder-input" class="field" type="text" placeholder="Paste a folder path to watch">
+    <select id="folder-owner" title="Whose memory this folder feeds"></select>
+    <button type="button" id="folder-add" class="btn">Add</button>
+  </div>
+  <p id="folder-msg" class="panel-msg"></p>
+  <p class="sub">The menu next to <b>Add</b> picks whose memory the folder feeds: <b>Shared</b> or one bot. <b>Remove</b> asks whether to forget what was learned or keep it. Your files are never changed.</p>
+
+  <h3>📥 Quick drop folder (shared)</h3>
+  <div class="path-box">
+    <code id="vault-path">{{VAULT_PATH}}</code>
+    <button type="button" class="btn" data-copy="vault-path">Copy</button>
+  </div>
+  <ul>
+    <li>Reads <code>.txt</code>, <code>.md</code>, <code>.log</code>, <code>.py</code> up to 5 MB, including subfolders. Word/PDF: save as .txt first.</li>
+    <li>New and edited files are learned within seconds; deleted files are forgotten.</li>
+    <li><b>Save as memory</b> in the chat stores text directly — into the bot you're talking to, or shared.</li>
+    <li>Under any reply, open <b>memories used</b> to see what it drew on, and <b>Forget</b> anything that shouldn't be there.</li>
+  </ul>
+
+  <h3>🖼 Images</h3>
+  <p>Every image created is saved here, and a description of it goes into the memory of whoever made it (or the bot you were talking to):</p>
+  <div class="path-box">
+    <code id="images-path">{{IMAGES_PATH}}</code>
+    <button type="button" class="btn" data-copy="images-path">Copy</button>
+  </div>
+
+  <h3>🔒 Privacy settings</h3>
+  <div class="path-box">
+    <code id="config-path">{{CONFIG_PATH}}</code>
+    <button type="button" class="btn" data-copy="config-path">Copy</button>
+  </div>
+  <ul>
+    <li><code>masking_rules.json</code> — names and details swapped for placeholders before anything is sent to an AI service, then restored in the reply.</li>
+    <li><code>identity_frequency.txt</code> — the main Nuero AI's personality.</li>
+  </ul>
+
+  <h3>🌐 Memory graph</h3>
+  <p>The original 3D view of all memories is still available: <a href="/graph" target="_blank" style="color:#93c5fd">open the memory graph</a>.</p>
+</aside>
+
+<!-- ---------- Help panel ---------- -->
+<aside id="help-panel" class="side-panel" aria-label="Help">
+  <h2>How to use Nuero AI <button type="button" class="panel-close" data-close title="Close (Esc)">✕</button></h2>
+
+  <h3>💬 Conversations</h3>
+  <ul>
+    <li>Pick who to talk to in the left sidebar: <b>Nuero AI</b> (main assistant, shared memories), any <b>bot</b>, or the <b>Council</b>.</li>
+    <li>Each conversation is kept separately in this browser, and the AI sees its last few messages, so follow-up questions work. <b>Clear</b> starts fresh.</li>
+    <li>Before answering, the AI looks up the 3 memories most related to your message. <b>memories used</b> under a reply shows them.</li>
+  </ul>
+
+  <h3>🏛 Council</h3>
+  <ul>
+    <li>Your message goes to several bots at once; each answer fills in as that bot finishes.</li>
+    <li><b>Members ▾</b> chooses who's in. Each bot answers from its own private memories plus shared ones.</li>
+    <li>One AI request per bot — if the service starts refusing (rate limit), pick fewer members.</li>
+  </ul>
+
+  <h3>🤖 Bots</h3>
+  <ul>
+    <li>Create bots in <b>🤖 Bots</b> from their folders. Edit each personality there — it's the bot's instructions.</li>
+    <li><b>Save as memory</b> saves into whoever you're talking to.</li>
+  </ul>
+
+  <h3>🧠 AI service</h3>
+  <ul>
+    <li>Choose <b>Gemini</b>, <b>Claude</b> or <b>Grok</b> and the model at the bottom-left; every bot uses it. Claude: <b>Haiku</b> (fast) → <b>Sonnet</b> → <b>Opus</b> (heavy lifting).</li>
+    <li>A service is offered once its key is set (<code>GEMINI_API_KEY</code>, <code>ANTHROPIC_API_KEY</code>, <code>XAI_API_KEY</code>), e.g. in PowerShell:<br><code>[Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY", "your-key", "User")</code><br>then open a new terminal and restart.</li>
+    <li>Only the relevant memories and recent messages are sent, with names and addresses masked.</li>
+  </ul>
+
+  <h3>🎨 Images</h3>
+  <ul>
+    <li>Type a description and click <b>🎨</b> (or type <code>/image a lighthouse at dusk</code>) to create a picture.</li>
+    <li>Bots can also create images on their own when they think a picture helps — shown in their reply with the prompt they wrote. Turn this on/off per bot, and set a daily limit, in <b>🤖 Bots</b>. Never in Council.</li>
+    <li>Images are saved on this computer (see <b>🧠 Memory</b>), and bots remember what they made.</li>
+    <li>Needs a Gemini or Grok key — Claude can't create images. Each image costs a few cents.</li>
+  </ul>
+
+  <h3>🎤 Voice</h3>
+  <ul>
+    <li>🎤 to speak a message (Chrome or Edge; the browser sends audio to Google/Microsoft to transcribe). <b>Voice</b> reads replies aloud.</li>
+  </ul>
+
+  <h3>⚙️ Running</h3>
+  <ul>
+    <li>Start with <code>start_nuero.bat</code>. Stop by typing <code>exit</code> in its terminal.</li>
+    <li>Terminal commands: <code>/ai</code>, <code>/bot</code>, <code>/bot Name</code>, <code>/council question</code>.</li>
+    <li>Only one copy can run at a time.</li>
+  </ul>
+</aside>
+
+<script>
+  // ================================================================ helpers
+  const $ = id => document.getElementById(id);
+  const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const store = {
+    get(key, fallback) { try { const v = localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); } catch (e) { return fallback; } },
+    set(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* private mode / quota */ } },
+    del(key) { try { localStorage.removeItem(key); } catch (e) {} }
+  };
+
+  async function api(url, body) {
+    const res = await fetch(url, body === undefined ? undefined : {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(typeof body === 'string' ? { text: body } : body)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || res.statusText);
+    return data;
+  }
+
+  // Small, safe markdown: everything is escaped first, then a few patterns are styled
+  function renderMarkdown(text) {
+    const blocks = [];
+    let s = escapeHtml(text).replace(/```[^\n]*\n?([\s\S]*?)```/g, (_, code) => {
+      blocks.push('<pre><code>' + code.replace(/\n$/, '') + '</code></pre>');
+      return '\u0000' + (blocks.length - 1) + '\u0000';
+    });
+    const out = [];
+    let list = null;
+    for (const line of s.split('\n')) {
+      const bullet = line.match(/^\s*[-*•]\s+(.*)/);
+      if (bullet) { (list = list || []).push('<li>' + inline(bullet[1]) + '</li>'); continue; }
+      if (list) { out.push('<ul>' + list.join('') + '</ul>'); list = null; }
+      const heading = line.match(/^#{1,4}\s+(.*)/);
+      if (heading) out.push('<div class="md-h">' + inline(heading[1]) + '</div>');
+      else if (line.trim()) out.push('<p>' + inline(line) + '</p>');
+    }
+    if (list) out.push('<ul>' + list.join('') + '</ul>');
+    return out.join('').replace(/<p>\u0000(\d+)\u0000<\/p>|\u0000(\d+)\u0000/g, (_, a, b) => blocks[a ?? b]);
+  }
+  function inline(s) {
+    return s.replace(/`([^`]+)`/g, '<code>$1</code>')
+            .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+            .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>');
+  }
+
+  // ================================================================ state
+  const MAIN = 'main', COUNCIL = 'council';
+  let bots = [];
+  let target = store.get('nuero-target', MAIN);
+  const threads = {};           // target -> entries (cached from localStorage)
+  const pending = {};           // target -> true while waiting for a reply
+  let excluded = new Set(store.get('nuero-council-excluded', []));
+  let voiceOn = store.get('nuero-voice', false);
+
+  const botById = id => bots.find(b => b.id === id);
+  const MAIN_COLOR = '#0096ff';
+
+  function threadOf(t) {
+    if (!threads[t]) threads[t] = store.get('nuero-thread:' + t, []);
+    return threads[t];
+  }
+  function saveThread(t) { store.set('nuero-thread:' + t, threadOf(t).slice(-200)); }
+
+  function who(t) {
+    if (t === COUNCIL) return { name: 'Council', color: null, initial: '', council: true };
+    const bot = botById(t);
+    if (bot) return { name: bot.name, color: bot.color, initial: bot.name[0].toUpperCase(), bot };
+    return { name: 'Nuero AI', color: MAIN_COLOR, initial: 'N' };
+  }
+  function councilMembers() { return bots.filter(b => !excluded.has(b.id)); }
+
+  function setAvatar(el, w) {
+    el.classList.toggle('council', !!w.council);
+    el.style.setProperty('--c', w.color || MAIN_COLOR);
+    el.textContent = w.initial;
+  }
+
+  // ================================================================ navigation
+  function renderNav() {
+    const list = $('nav-list');
+    list.replaceChildren();
+    const item = (t, sub) => {
+      const w = who(t);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'nav-item' + (t === target ? ' active' : '');
+      const av = document.createElement('div');
+      av.className = 'avatar';
+      setAvatar(av, w);
+      const text = document.createElement('div');
+      text.className = 'who';
+      text.innerHTML = '<div class="who-name"></div><div class="who-sub"></div>';
+      text.firstChild.textContent = w.name;
+      text.lastChild.textContent = sub;
+      b.append(av, text);
+      if (pending[t]) { const d = document.createElement('span'); d.className = 'busy-dot'; b.appendChild(d); }
+      b.addEventListener('click', () => { selectTarget(t); $('nav').classList.remove('open'); });
+      return b;
+    };
+    const label = (text, action) => {
+      const d = document.createElement('div');
+      d.className = 'nav-label';
+      d.textContent = text;
+      if (action) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = action[0];
+        btn.addEventListener('click', action[1]);
+        d.appendChild(btn);
+      }
+      return d;
+    };
+    list.append(label('Talk to'), item(MAIN, 'Main assistant · shared memory'),
+                item(COUNCIL, bots.length ? `${councilMembers().length} of ${bots.length} bots` : 'Add bots first'));
+    list.append(label(`Bots (${bots.length})`, ['+ New', () => openPanel('bots-panel', true)]));
+    if (!bots.length) {
+      const e = document.createElement('div');
+      e.className = 'nav-empty';
+      e.textContent = 'No bots yet. Click “+ New” to create one from its folder.';
+      list.appendChild(e);
+    }
+    for (const bot of bots) {
+      const n = bot.folders.length;
+      list.appendChild(item(bot.id, n ? `${n} folder${n > 1 ? 's' : ''} · private memory` : 'No folder yet'));
+    }
+  }
+
+  function selectTarget(t) {
+    if (t !== MAIN && t !== COUNCIL && !botById(t)) t = MAIN;
+    target = t;
+    store.set('nuero-target', t);
+    renderNav();
+    renderHeader();
+    renderThread();
+    updateComposer();
+    $('chat-input').focus();
+  }
+
+  function renderHeader() {
+    const w = who(target);
+    setAvatar($('head-avatar'), w);
+    $('head-title').textContent = w.name;
+    let sub;
+    if (w.council) sub = `${councilMembers().length} member${councilMembers().length === 1 ? '' : 's'} · each answers from its own memory`;
+    else if (w.bot) sub = `Private memory${w.bot.folders.length ? ' (' + w.bot.folders.length + ' folder' + (w.bot.folders.length > 1 ? 's' : '') + ')' : ''} + shared`;
+    else sub = 'Main assistant · shared memory';
+    $('head-sub').textContent = sub + ' · ' + aiLabel();
+    $('members-btn').hidden = !w.council;
+    if (!w.council) $('members').hidden = true;
+    $('save-hint').textContent = w.bot ? `Save as memory → ${w.name}'s private memory` : 'Save as memory → shared memory';
+    $('chat-input').placeholder = w.council ? 'Ask the council… (Enter to send)' : `Message ${w.name}… (Enter to send, Shift+Enter for a new line)`;
+    renderMembers();
+  }
+
+  // ================================================================ council members
+  function renderMembers() {
+    const box = $('members');
+    box.replaceChildren();
+    for (const bot of bots) {
+      const label = document.createElement('label');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = !excluded.has(bot.id);
+      cb.addEventListener('change', () => {
+        cb.checked ? excluded.delete(bot.id) : excluded.add(bot.id);
+        store.set('nuero-council-excluded', [...excluded]);
+        renderNav(); renderHeader();
+      });
+      const dot = document.createElement('span');
+      dot.className = 'avatar';
+      dot.style.cssText = `--c:${bot.color};width:12px;height:12px`;
+      label.append(cb, dot, document.createTextNode(bot.name));
+      box.appendChild(label);
+    }
+    const actions = document.createElement('div');
+    actions.className = 'members-actions';
+    for (const [text, fn] of [['Select all', () => excluded.clear()], ['Select none', () => bots.forEach(b => excluded.add(b.id))]]) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = text;
+      b.addEventListener('click', () => { fn(); store.set('nuero-council-excluded', [...excluded]); renderNav(); renderHeader(); });
+      actions.appendChild(b);
+    }
+    if (bots.length) box.appendChild(actions);
+  }
+  $('members-btn').addEventListener('click', () => { $('members').hidden = !$('members').hidden; });
+
+  // ================================================================ thread rendering
+  function renderThread() {
+    const inner = $('thread-inner');
+    inner.replaceChildren();
+    const entries = threadOf(target);
+    if (!entries.length) inner.appendChild(welcome());
+    for (const e of entries) inner.appendChild(renderEntry(e, target));
+    if (pending[target] && target !== COUNCIL) inner.appendChild(typing());
+    scrollDown();
+  }
+
+  function scrollDown() { const t = $('thread'); t.scrollTop = t.scrollHeight; }
+
+  function typing() {
+    const d = document.createElement('div');
+    d.className = 'typing';
+    d.id = 'typing';
+    d.innerHTML = '<span></span><span></span><span></span>';
+    return d;
+  }
+
+  function welcome() {
+    const w = who(target);
+    const d = document.createElement('div');
+    d.className = 'welcome';
+    const av = document.createElement('div');
+    av.className = 'avatar';
+    setAvatar(av, w);
+    d.appendChild(av);
+    const h = document.createElement('h2');
+    h.textContent = w.name;
+    d.appendChild(h);
+    const p = (text, cls) => { const el = document.createElement('p'); el.textContent = text; if (cls) el.className = cls; d.appendChild(el); };
+    if (w.council) {
+      if (bots.length) p(`Ask a question and ${councilMembers().length} bots answer it side by side, each from its own memory.`);
+      else {
+        p('The council needs bots. Create them from their folders first.');
+        const b = document.createElement('button');
+        b.className = 'btn'; b.type = 'button'; b.textContent = 'Create bots';
+        b.addEventListener('click', () => openPanel('bots-panel', true));
+        d.appendChild(b);
+      }
+    } else if (w.bot) {
+      if (w.bot.personality) p(w.bot.personality.length > 280 ? w.bot.personality.slice(0, 280) + '…' : w.bot.personality, 'persona');
+      else p('No personality written yet — add one in 🤖 Bots so this bot knows who it is.');
+      p(w.bot.folders.length ? 'Answers from its private folder memory plus shared memories.' : 'No folder yet — it only knows shared memories and what you save to it.');
+    } else {
+      p('Your main assistant. It answers from the shared memories — the quick drop folder, shared watched folders, and anything saved here.');
+    }
+    return d;
+  }
+
+  function renderEntry(e, t) {
+    if (e.type === 'user') { const d = document.createElement('div'); d.className = 'msg user'; d.textContent = e.text; return d; }
+    if (e.type === 'error') { const d = document.createElement('div'); d.className = 'msg error'; d.textContent = e.text; return d; }
+    if (e.type === 'system') { const d = document.createElement('div'); d.className = 'msg system'; d.textContent = e.text; return d; }
+    if (e.type === 'ai') return aiBubble(e, t);
+    if (e.type === 'council') return councilGrid(e, t);
+    return document.createElement('div');
+  }
+
+  function aiBubble(e, t) {
+    const d = document.createElement('div');
+    d.className = 'msg ai';
+    const color = (botById(e.bot) || {}).color || e.color || MAIN_COLOR;
+    d.style.setProperty('--c', color);
+    const head = document.createElement('div');
+    head.className = 'msg-head';
+    head.innerHTML = '<span class="dot"></span><span></span>';
+    head.lastChild.textContent = (botById(e.bot) || {}).name || e.name || 'Nuero AI';
+    const body = document.createElement('div');
+    body.className = 'md';
+    body.innerHTML = renderMarkdown(e.text);
+    d.append(head, body);
+
+    const foot = document.createElement('div');
+    foot.className = 'msg-foot';
+    if (e.ai) { const via = document.createElement('span'); via.textContent = 'via ' + e.ai; foot.appendChild(via); }
+    const mems = e.memories || [];
+    const list = document.createElement('div');
+    list.className = 'mem-list';
+    list.hidden = true;
+    if (mems.length) {
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.textContent = `${mems.length} memor${mems.length === 1 ? 'y' : 'ies'} used ▾`;
+      toggle.addEventListener('click', () => { list.hidden = !list.hidden; });
+      foot.appendChild(toggle);
+      for (const m of mems) list.appendChild(memoryItem(m, e, t));
+    }
+    for (const img of e.images || []) body.appendChild(imageFigure(img));
+    if (e.image_error) {
+      const note = document.createElement('div');
+      note.className = 'img-note';
+      note.textContent = '🎨 ' + e.image_error;
+      body.appendChild(note);
+    }
+    if (e.ai || mems.length) d.append(foot, list);
+    return d;
+  }
+
+  function imageFigure(img) {
+    const fig = document.createElement('figure');
+    fig.className = 'msg-img';
+    const a = document.createElement('a');
+    a.href = img.url;
+    a.target = '_blank';
+    a.title = 'Open full size';
+    const im = document.createElement('img');
+    im.src = img.url;
+    im.alt = img.prompt;
+    // Images arrive after the thread scrolled; keep the newest message in view if we were near the bottom
+    im.addEventListener('load', () => {
+      const t = $('thread');
+      if (t.contains(im) && t.scrollHeight - t.scrollTop - t.clientHeight < 700) scrollDown();
+    });
+    a.appendChild(im);
+    const cap = document.createElement('figcaption');
+    cap.textContent = (img.requested ? '🎨 Created at your request: ' : `🎨 ${img.by}'s idea: `) + img.prompt + ' · ' + img.provider;
+    fig.append(a, cap);
+    return fig;
+  }
+
+  function memoryItem(m, entry, t) {
+    const item = document.createElement('div');
+    item.className = 'mem-item' + (m.gone ? ' gone' : '');
+    const src = document.createElement('div');
+    src.className = 'mem-src';
+    const owner = m.bot && m.bot !== 'shared' ? ((botById(m.bot) || {}).name || 'a bot') + "'s private memory" : 'Shared';
+    const label = document.createElement('span');
+    label.textContent = owner + ' · ' + (m.source || 'unknown');
+    src.appendChild(label);
+    if (!m.gone) {
+      const forget = document.createElement('button');
+      forget.type = 'button';
+      forget.textContent = 'Forget';
+      forget.title = 'Remove this memory from Nuero AI (your files are not changed)';
+      forget.addEventListener('click', async () => {
+        if (!confirm('Forget this memory? It will no longer be used. Your files are not changed.')) return;
+        try {
+          await api('/api/memory/forget', String(m.id));
+          m.gone = true;
+          saveThread(t);
+          item.classList.add('gone');
+          forget.remove();
+        } catch (err) { alert('Could not forget: ' + err.message); }
+      });
+      src.appendChild(forget);
+    }
+    const text = document.createElement('div');
+    text.className = 'mem-text';
+    text.textContent = m.text.length > 400 ? m.text.slice(0, 400) + '…' : m.text;
+    item.append(src, text);
+    return item;
+  }
+
+  function councilGrid(e, t) {
+    const grid = document.createElement('div');
+    grid.className = 'council';
+    grid.dataset.uid = e.uid;
+    for (const member of e.members) {
+      const result = e.results[member.id];
+      if (!result) {
+        const card = document.createElement('div');
+        card.className = 'msg ai';
+        card.style.setProperty('--c', member.color);
+        card.innerHTML = '<div class="msg-head"><span class="dot"></span><span></span></div><div class="pending">' +
+          (e.done ? 'No answer.' : 'Thinking…') + '</div>';
+        card.querySelector('.msg-head span:last-child').textContent = member.name;
+        grid.appendChild(card);
+      } else if (result.error) {
+        const card = document.createElement('div');
+        card.className = 'msg error';
+        card.style.maxWidth = 'none';
+        card.textContent = member.name + ': ' + result.error;
+        grid.appendChild(card);
+      } else {
+        grid.appendChild(aiBubble({ ...result, text: result.reply, bot: member.id, name: member.name, color: member.color }, t));
+      }
+    }
+    return grid;
+  }
+
+  function appendEntry(t, entry) {
+    threadOf(t).push(entry);
+    saveThread(t);
+    if (t === target) {
+      const inner = $('thread-inner');
+      const w = inner.querySelector('.welcome');
+      if (w) w.remove();
+      const ty = $('typing');
+      const el = renderEntry(entry, t);
+      ty ? inner.insertBefore(el, ty) : inner.appendChild(el);
+      scrollDown();
+    }
+  }
+
+  function setPending(t, on) {
+    on ? (pending[t] = true) : delete pending[t];
+    renderNav();
+    if (t === target) {
+      const ty = $('typing');
+      if (on && !ty && t !== COUNCIL) { $('thread-inner').appendChild(typing()); scrollDown(); }
+      if (!on && ty) ty.remove();
+    }
+    updateComposer();
+  }
+
+  function updateComposer() {
+    $('send-btn').disabled = $('save-btn').disabled = !!pending[target];
+  }
+
+  // History sent with a message: the last turns of this conversation
+  function historyFor(t) {
+    return threadOf(t)
+      .filter(e => (e.type === 'user' && !e.image) || (e.type === 'ai' && e.text))
+      .slice(-10)
+      .map(e => ({ role: e.type === 'user' ? 'user' : 'assistant', text: e.text }));
+  }
+
+  // ================================================================ sending
+  async function sendMessage() {
+    const input = $('chat-input');
+    const text = input.value.trim();
+    if (!text || pending[target]) return;
+    const t = target;
+    input.value = '';
+    autoGrow();
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+    if (/^\/image\b/i.test(text)) return sendImage(t, text.replace(/^\/image\s*/i, ''));
+    if (t === COUNCIL) return sendCouncil(text);
+
+    const history = historyFor(t);
+    appendEntry(t, { type: 'user', text });
+    setPending(t, true);
+    try {
+      const r = await api('/api/chat', { text, bot: t === MAIN ? null : t, history });
+      const w = who(t);
+      appendEntry(t, { type: 'ai', text: r.reply, ai: r.ai, memories: r.memories, bot: r.bot, name: w.name, color: w.color,
+                       images: r.images, image_error: r.image_error });
+      if (t === target) speak(r.reply);
+    } catch (err) {
+      appendEntry(t, { type: 'error', text: 'Error: ' + err.message });
+    } finally {
+      setPending(t, false);
+    }
+  }
+
+  // An image the user asked for; in Council it's saved to shared memory
+  async function sendImage(t, prompt) {
+    if (!prompt.trim()) {
+      $('chat-input').placeholder = 'Describe the image, then click 🎨 (or type /image …)';
+      $('chat-input').focus();
+      return;
+    }
+    const w = who(t);
+    appendEntry(t, { type: 'user', text: '🎨 ' + prompt, image: true });
+    setPending(t, true);
+    try {
+      const img = await api('/api/image', { text: prompt, bot: w.bot ? w.bot.id : null });
+      appendEntry(t, { type: 'ai', text: '', images: [img], bot: w.bot ? w.bot.id : null, name: w.name, color: w.color });
+    } catch (err) {
+      appendEntry(t, { type: 'error', text: 'Could not create the image: ' + err.message });
+    } finally {
+      setPending(t, false);
+    }
+  }
+  $('image-btn').addEventListener('click', () => {
+    const input = $('chat-input');
+    const prompt = input.value.trim().replace(/^\/image\s*/i, '');
+    if (pending[target]) return;
+    input.value = '';
+    autoGrow();
+    sendImage(target, prompt);
+  });
+
+  async function sendCouncil(text) {
+    const members = councilMembers();
+    if (!members.length) {
+      appendEntry(COUNCIL, { type: 'error', text: bots.length ? 'Pick at least one council member (Members ▾).' : 'Create some bots first (🤖 Bots).' });
+      return;
+    }
+    appendEntry(COUNCIL, { type: 'user', text });
+    const entry = {
+      type: 'council', uid: String(Date.now()),
+      members: members.map(b => ({ id: b.id, name: b.name, color: b.color })), results: {}
+    };
+    appendEntry(COUNCIL, entry);
+    setPending(COUNCIL, true);
+    const redraw = () => {
+      saveThread(COUNCIL);
+      const old = document.querySelector(`.council[data-uid="${entry.uid}"]`);
+      if (old) old.replaceWith(councilGrid(entry, COUNCIL));
+    };
+    try {
+      const res = await fetch('/api/council', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, bots: members.map(b => b.id) })
+      });
+      if (!res.ok) throw new Error((await res.json()).error || res.statusText);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let nl;
+        while ((nl = buffer.indexOf('\n')) >= 0) {
+          const line = buffer.slice(0, nl).trim();
+          buffer = buffer.slice(nl + 1);
+          if (!line) continue;
+          const result = JSON.parse(line);
+          if (!result.bot) { appendEntry(COUNCIL, { type: 'error', text: 'Error: ' + result.error }); continue; }
+          entry.results[result.bot] = result;
+          redraw();
+          if (!result.error && target === COUNCIL) speak(result.bot_name + ' says: ' + result.reply, true);
+        }
+      }
+    } catch (err) {
+      appendEntry(COUNCIL, { type: 'error', text: 'Error: ' + err.message });
+    } finally {
+      entry.done = true;
+      redraw();
+      setPending(COUNCIL, false);
+    }
+  }
+
+  async function saveMemory() {
+    const input = $('chat-input');
+    const text = input.value.trim();
+    if (!text) return;
+    const w = who(target);
+    try {
+      await api('/api/memory', { text, bot: w.bot ? w.bot.id : null });
+      input.value = '';
+      autoGrow();
+      appendEntry(target, { type: 'system', text: `Saved to ${w.bot ? w.name + "'s private" : 'shared'} memory: “${text.length > 80 ? text.slice(0, 80) + '…' : text}”` });
+    } catch (err) {
+      appendEntry(target, { type: 'error', text: 'Could not save: ' + err.message });
+    }
+  }
+
+  function autoGrow() {
+    const input = $('chat-input');
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 200) + 'px';
+  }
+
+  $('composer').addEventListener('submit', e => { e.preventDefault(); sendMessage(); });
+  $('save-btn').addEventListener('click', saveMemory);
+  $('chat-input').addEventListener('input', autoGrow);
+  $('chat-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+  $('clear-btn').addEventListener('click', () => {
+    if (!threadOf(target).length || !confirm(`Clear the conversation with ${who(target).name}? Memories are not affected.`)) return;
+    threads[target] = [];
+    store.del('nuero-thread:' + target);
+    renderThread();
+  });
+  $('menu-btn').addEventListener('click', () => $('nav').classList.toggle('open'));
+
+  // ================================================================ voice
+  function renderVoice() {
+    $('voice-btn').classList.toggle('on', voiceOn);
+    $('voice-btn').innerHTML = voiceOn ? '🔊 <span>Voice on</span>' : '🔇 <span>Voice off</span>';
+  }
+  function pickVoice() {
+    const voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
+    return voices.find(v => /natural/i.test(v.name)) || voices.find(v => v.default) || voices[0];
+  }
+  function speak(text, queue = false) {
+    if (!voiceOn || !('speechSynthesis' in window)) return;
+    if (!queue) speechSynthesis.cancel();
+    const clean = text.replace(/```[\s\S]*?```/g, ' code block omitted. ').replace(/[*_#`>|~]/g, '').replace(/\[(.*?)\]\(.*?\)/g, '$1');
+    const voice = pickVoice();
+    for (const chunk of clean.match(/[^.!?\n]+[.!?]*\s*/g) || []) {
+      if (!chunk.trim()) continue;
+      const u = new SpeechSynthesisUtterance(chunk);
+      if (voice) u.voice = voice;
+      speechSynthesis.speak(u);
+    }
+  }
+  if ('speechSynthesis' in window) {
+    speechSynthesis.getVoices();
+    $('voice-btn').addEventListener('click', () => {
+      voiceOn = !voiceOn;
+      if (!voiceOn) speechSynthesis.cancel();
+      store.set('nuero-voice', voiceOn);
+      renderVoice();
+    });
+    renderVoice();
+  } else {
+    $('voice-btn').hidden = true;
+  }
+
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognizer = null;
+  if (Recognition) {
+    $('mic-btn').addEventListener('click', () => {
+      if (recognizer) { recognizer.stop(); return; }
+      if ('speechSynthesis' in window) speechSynthesis.cancel();
+      const input = $('chat-input');
+      recognizer = new Recognition();
+      recognizer.lang = navigator.language || 'en-US';
+      recognizer.interimResults = true;
+      let finalText = '';
+      recognizer.onresult = e => {
+        let interim = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
+          else interim += e.results[i][0].transcript;
+        }
+        input.value = (finalText + interim).trim();
+        autoGrow();
+      };
+      recognizer.onerror = e => {
+        if (e.error === 'not-allowed') appendEntry(target, { type: 'error', text: 'Microphone access was blocked. Allow it in the address bar, then try again.' });
+        else if (e.error !== 'no-speech' && e.error !== 'aborted') appendEntry(target, { type: 'error', text: 'Mic error: ' + e.error });
+      };
+      recognizer.onend = () => {
+        recognizer = null;
+        $('mic-btn').classList.remove('listening');
+        renderHeader();
+        if (finalText.trim()) sendMessage();
+      };
+      recognizer.start();
+      $('mic-btn').classList.add('listening');
+      input.value = '';
+      input.placeholder = 'Listening… click 🎤 again to stop';
+    });
+  } else {
+    $('mic-btn').disabled = true;
+    $('mic-btn').title = 'Voice input needs Chrome or Edge';
+  }
+
+  // ================================================================ AI picker
+  let aiStatus = null;
+  function aiLabel() {
+    if (!aiStatus) return '';
+    const p = aiStatus.providers.find(x => x.id === aiStatus.current.provider);
+    const m = p && p.models.find(x => x.id === aiStatus.current.model);
+    return (p ? p.label : '') + ' · ' + (m ? m.label.split(' — ')[0] : aiStatus.current.model);
+  }
+  function renderAi(status) {
+    aiStatus = status;
+    $('provider-select').replaceChildren(...status.providers.map(p => {
+      const opt = new Option(p.available ? p.label : p.label + ' (no key)', p.id);
+      opt.disabled = !p.available;
+      opt.title = p.available ? '' : 'Set ' + p.key_env + ' and restart Nuero AI to use ' + p.label;
+      return opt;
+    }));
+    $('provider-select').value = status.current.provider;
+    const current = status.providers.find(p => p.id === status.current.provider);
+    const models = current && current.models.length ? current.models : [{ id: status.current.model, label: status.current.model }];
+    $('model-select').replaceChildren(...models.map(m => {
+      const [short, detail] = m.label.split(' — ');
+      const opt = new Option(short, m.id);
+      if (detail) opt.title = detail;
+      return opt;
+    }));
+    $('model-select').title = (models.find(m => m.id === status.current.model) || {}).label || '';
+    $('model-select').value = status.current.model;
+    renderHeader();
+  }
+  async function chooseAi(provider, model) {
+    $('provider-select').disabled = $('model-select').disabled = true;
+    try {
+      renderAi(await api('/api/ai', { provider, model }));
+    } catch (err) {
+      appendEntry(target, { type: 'error', text: 'Could not switch AI: ' + err.message });
+      if (aiStatus) renderAi(aiStatus);
+    } finally {
+      $('provider-select').disabled = $('model-select').disabled = false;
+    }
+  }
+  $('provider-select').addEventListener('change', () => chooseAi($('provider-select').value, null));
+  $('model-select').addEventListener('change', () => chooseAi($('provider-select').value, $('model-select').value));
+
+  // ================================================================ panels
+  function openPanel(id, focusNew) {
+    document.querySelectorAll('.side-panel').forEach(p => p.classList.toggle('open', p.id === id));
+    if (id === 'memory-panel') loadFolders();
+    if (id === 'bots-panel') { renderBotList(); loadImageSettings(); if (focusNew) setTimeout(() => $('new-bot-folder').focus(), 260); }
+  }
+  function closePanels() { document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open')); }
+  document.querySelectorAll('[data-panel]').forEach(b => b.addEventListener('click', () => openPanel(b.dataset.panel)));
+  document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closePanels));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanels(); });
+  document.querySelectorAll('[data-copy]').forEach(btn => btn.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText($(btn.dataset.copy).textContent); btn.textContent = 'Copied!'; }
+    catch (e) { btn.textContent = 'Select & copy'; }
+    setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+  }));
+  const say = (el, text, isError) => { el.textContent = text; el.style.color = isError ? '#fca5a5' : 'var(--ok)'; };
+
+  // ================================================================ bots
+  async function loadBots() {
+    try { bots = (await api('/api/bots')).bots; } catch (e) { bots = []; }
+    for (const id of [...excluded]) if (!botById(id)) excluded.delete(id);
+    renderFolderOwners();
+    if (target !== MAIN && target !== COUNCIL && !botById(target)) target = MAIN;
+    renderNav();
+    renderHeader();
+    renderBotList();
+  }
+
+  function renderBotList() {
+    const list = $('bot-list');
+    list.replaceChildren();
+    if (!bots.length) { list.innerHTML = '<p class="sub">No bots yet.</p>'; return; }
+    for (const bot of bots) {
+      const card = document.createElement('div');
+      card.className = 'bot-card';
+      const head = document.createElement('div');
+      head.className = 'bot-card-head';
+      const av = document.createElement('div');
+      av.className = 'avatar';
+      setAvatar(av, who(bot.id));
+      const name = document.createElement('input');
+      name.className = 'field';
+      name.value = bot.name;
+      name.setAttribute('aria-label', 'Bot name');
+      head.append(av, name);
+      const folders = document.createElement('div');
+      folders.className = 'bot-folders' + (bot.folders.length ? '' : ' none');
+      folders.textContent = bot.folders.length ? '📁 ' + bot.folders.join('\n📁 ') : 'No folder — add one in 🧠 Memory → Watched folders (choose this bot in the menu).';
+      folders.style.whiteSpace = 'pre-line';
+      const persona = document.createElement('textarea');
+      persona.className = 'field';
+      persona.value = bot.personality;
+      persona.placeholder = `Who is ${bot.name}? e.g. "You are ${bot.name}, a calm research partner who…"`;
+      const draws = document.createElement('label');
+      draws.className = 'check';
+      const drawsBox = document.createElement('input');
+      drawsBox.type = 'checkbox';
+      drawsBox.checked = bot.images !== false;
+      draws.append(drawsBox, document.createTextNode('Can create images on its own'));
+      const msg = document.createElement('p');
+      msg.className = 'panel-msg';
+      const actions = document.createElement('div');
+      actions.className = 'bot-actions';
+      const mk = (text, cls, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + cls; b.textContent = text; b.addEventListener('click', fn); return b; };
+      actions.append(
+        mk('Chat', 'plain', () => { closePanels(); selectTarget(bot.id); }),
+        mk('Delete', 'danger', async () => {
+          if (!confirm(`Delete ${bot.name}?\n\nIts private memories are erased from Nuero AI and its folders stop being watched. The folders and files themselves are NOT touched, so you can re-create the bot later.`)) return;
+          try {
+            await api('/api/bots/delete', bot.id);
+            store.del('nuero-thread:' + bot.id);
+            delete threads[bot.id];
+            await loadBots();
+          } catch (err) { say(msg, err.message, true); }
+        }),
+        mk('Save', '', async () => {
+          try {
+            await api('/api/bots/update', { id: bot.id, name: name.value, personality: persona.value, images: drawsBox.checked });
+            say(msg, 'Saved.', false);
+            await loadBots();
+          } catch (err) { say(msg, err.message, true); }
+        })
+      );
+      card.append(head, folders, persona, draws, actions, msg);
+      list.appendChild(card);
+    }
+  }
+
+  $('new-bot-add').addEventListener('click', async () => {
+    const folder = $('new-bot-folder').value.trim(), name = $('new-bot-name').value.trim();
+    if (!folder && !name) return say($('bot-msg'), 'Paste a folder path, a name, or both.', true);
+    $('new-bot-add').disabled = true;
+    try {
+      const { bot } = await api('/api/bots', { folder: folder || null, name: name || null });
+      $('new-bot-folder').value = $('new-bot-name').value = '';
+      say($('bot-msg'), `Created ${bot.name}.` + (folder ? ' Learning its folder in the background.' : '') +
+        (bot.personality ? ' Personality found in its folder.' : ' Write its personality below.'), false);
+      await loadBots();
+    } catch (err) {
+      say($('bot-msg'), err.message, true);
+    } finally {
+      $('new-bot-add').disabled = false;
+    }
+  });
+
+  // ================================================================ image settings
+  function renderImageSettings(s) {
+    const sel = $('image-provider');
+    const usable = s.providers.filter(p => p.available);
+    sel.replaceChildren(...(usable.length ? usable.map(p => new Option(p.label, p.id))
+                                          : [new Option('None — needs a Gemini or Grok key', '')]));
+    sel.disabled = !usable.length;
+    sel.value = s.provider || '';
+    $('image-cap').value = s.daily_cap;
+    $('image-used').textContent = `${s.used_today} used today`;
+    $('image-main').checked = s.main_auto;
+    $('image-btn').disabled = !usable.length;
+    $('image-btn').title = usable.length ? 'Create an image from what you typed (or type /image …)' : 'Images need a Gemini or Grok key';
+  }
+  async function loadImageSettings() {
+    try { renderImageSettings(await api('/api/images/settings')); } catch (e) { /* server starting */ }
+  }
+  $('image-save').addEventListener('click', async () => {
+    try {
+      renderImageSettings(await api('/api/images/settings', {
+        provider: $('image-provider').value || null,
+        daily_cap: Number($('image-cap').value),
+        main_auto: $('image-main').checked
+      }));
+      say($('image-msg'), 'Saved.', false);
+    } catch (err) { say($('image-msg'), err.message, true); }
+  });
+
+  // ================================================================ watched folders
+  function renderFolderOwners() {
+    const sel = $('folder-owner');
+    const keep = sel.value;
+    sel.replaceChildren(new Option('Shared', ''), ...bots.map(b => new Option(b.name, b.id)));
+    sel.value = botById(keep) ? keep : '';
+  }
+
+  async function loadFolders() {
+    const list = $('folder-list');
+    try {
+      const { folders } = await api('/api/folders');
+      list.replaceChildren(...folders.map(f => {
+        const li = document.createElement('li');
+        const path = document.createElement('span');
+        path.className = 'fpath';
+        path.textContent = f.path;
+        const tag = document.createElement('span');
+        tag.className = 'ftag';
+        const owner = botById(f.bot);
+        if (owner) { const dot = document.createElement('span'); dot.className = 'avatar'; dot.style.cssText = `--c:${owner.color};width:10px;height:10px`; tag.appendChild(dot); }
+        tag.appendChild(document.createTextNode((owner ? owner.name : 'Shared') + (f.default ? ' · built-in' : '') + (f.exists ? '' : ' · missing')));
+        li.append(path, tag);
+        if (!f.default) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'fremove';
+          btn.textContent = 'Remove';
+          btn.addEventListener('click', () => {
+            btn.remove();
+            const choice = document.createElement('span');
+            choice.className = 'fchoice';
+            for (const [label, cls, forget] of [['Forget memories', 'danger', true], ['Keep memories', '', false], ['Cancel', 'plain', null]]) {
+              const b = document.createElement('button');
+              b.type = 'button';
+              b.className = 'btn ' + cls;
+              b.textContent = label;
+              b.addEventListener('click', async () => {
+                if (forget === null) return loadFolders();
+                try {
+                  const { files } = await api('/api/folders/remove', { text: f.path, forget });
+                  say($('folder-msg'), forget ? `Stopped watching; forgot ${files} file(s).` : `Stopped watching; kept memories from ${files} file(s).`, false);
+                  await loadFolders();
+                  await loadBots();
+                } catch (err) { say($('folder-msg'), err.message, true); }
+              });
+              choice.appendChild(b);
+            }
+            li.appendChild(choice);
+          });
+          li.appendChild(btn);
+        }
+        return li;
+      }));
+    } catch (err) {
+      list.replaceChildren();
+      say($('folder-msg'), err.message, true);
+    }
+  }
+
+  async function addFolder() {
+    const path = $('folder-input').value.trim();
+    if (!path) return;
+    $('folder-add').disabled = true;
+    try {
+      const { added } = await api('/api/folders', { text: path, bot: $('folder-owner').value || null });
+      $('folder-input').value = '';
+      say($('folder-msg'), 'Now watching ' + added + '. Learning its files in the background.', false);
+      await loadFolders();
+      await loadBots();
+    } catch (err) {
+      say($('folder-msg'), err.message, true);
+    } finally {
+      $('folder-add').disabled = false;
+    }
+  }
+  $('folder-add').addEventListener('click', addFolder);
+  $('folder-input').addEventListener('keydown', e => { if (e.key === 'Enter') addFolder(); });
+
+  // ================================================================ start
+  (async () => {
+    await loadBots();
+    selectTarget(target);
+    try { renderAi(await api('/api/ai')); } catch (e) { /* server still starting */ }
+    loadImageSettings();
+  })();
+</script>
+</body>
+</html>

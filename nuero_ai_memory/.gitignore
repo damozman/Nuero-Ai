@@ -1,0 +1,7 @@
+storage/memory_vault.db/
+storage/vault/*
+!storage/vault/.gitkeep
+__pycache__/
+.venv/
+storage/ingested.json
+storage/images/

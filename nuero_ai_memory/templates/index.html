@@ -34,16 +34,29 @@
     .nav-item .busy-dot { margin-left: auto; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: blink 1s infinite; flex-shrink: 0; }
     .nav-empty { font-size: 0.8rem; color: var(--muted); padding: 4px 10px 8px; }
     .nav-bottom { border-top: 1px solid var(--line); padding: 12px 12px 14px; display: flex; flex-direction: column; gap: 8px; }
-    .ai-row { display: flex; gap: 6px; }
-    .ai-row select { min-width: 0; }
-    #provider-select { flex: 0 0 auto; }
-    #model-select { flex: 1; }
+    .ai-row { display: flex; flex-direction: column; gap: 6px; }
+    .ai-row select { width: 100%; min-width: 0; }
     .nav-tools { display: flex; gap: 6px; }
     .nav-tools button { flex: 1; padding: 7px 4px; font-size: 0.78rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); border-radius: 8px; }
     .nav-tools button:hover { background: rgba(255, 255, 255, 0.09); }
 
     .avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 0.9rem; color: #0a0a12; flex-shrink: 0; background: var(--c, var(--accent)); }
     .avatar.lg { width: 42px; height: 42px; font-size: 1.05rem; }
+    .avatar.xl { width: 72px; height: 72px; font-size: 1.6rem; }
+    .avatar.mini { width: 22px; height: 22px; font-size: 0.62rem; }
+    .avatar.has-img { background-size: cover; background-position: center; color: transparent; }
+    .avatar-row { display: flex; gap: 12px; align-items: center; }
+    .avatar-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .avatar-actions .btn { padding: 5px 9px; font-size: 0.75rem; }
+    details.card-section { border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 8px; }
+    details.card-section summary { cursor: pointer; font-size: 0.82rem; color: #c9ced6; }
+    details.card-section[open] summary { margin-bottom: 8px; }
+    .voice-grid { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; font-size: 0.8rem; }
+    .voice-grid select { width: 100%; }
+    .skill-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; background: rgba(0, 0, 0, 0.25); margin-bottom: 6px; font-size: 0.84rem; }
+    .skill-row .skill-name { flex: 1; font-weight: 600; }
+    .skill-edit { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+    #skill-select { max-width: 170px; border-radius: 999px; padding: 4px 10px; font-size: 0.78rem; }
     .avatar.council { background: linear-gradient(135deg, #f97316, #c084fc, #22d3ee); }
 
     /* ---------- main chat ---------- */
@@ -100,6 +113,72 @@
     .check { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: #c9ced6; cursor: pointer; }
     .settings-grid { display: grid; grid-template-columns: auto 1fr; gap: 8px 10px; align-items: center; font-size: 0.82rem; }
     .settings-grid input[type=number] { width: 90px; }
+    /* ---------- library ---------- */
+    #library-view { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+    #library-view[hidden] { display: none; }
+    #chat[hidden] { display: none; }
+    .lib-head { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
+    .lib-head h1 { font-size: 1.15rem; margin: 0; }
+    .lib-head .sub { flex: 1; min-width: 160px; }
+    #lib-body { flex: 1; overflow-y: auto; padding: 8px 24px 40px; }
+    .shelf-title { font-size: 0.75rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin: 22px 4px 0; }
+    .shelf { display: flex; flex-wrap: wrap; gap: 22px 18px; align-items: flex-end; padding: 18px 14px 0; min-height: 60px;
+             border-bottom: 12px solid #3a2a1c; box-shadow: 0 10px 14px -6px rgba(0, 0, 0, 0.7); border-radius: 0 0 4px 4px;
+             background: linear-gradient(to top, rgba(58, 42, 28, 0.25), transparent 70%); }
+    .shelf-empty { color: var(--muted); font-size: 0.85rem; padding: 0 0 18px; align-self: center; }
+    .book { width: 128px; height: 178px; border: none; border-radius: 3px 10px 10px 3px; color: #fff; text-align: left; padding: 14px 12px 10px 20px;
+            display: flex; flex-direction: column; position: relative; transition: transform 0.15s ease;
+            background: linear-gradient(to right, rgba(0, 0, 0, 0.35) 0 9px, rgba(255, 255, 255, 0.12) 9px 10px, transparent 10px), var(--bc, #7c3aed);
+            box-shadow: 4px 6px 14px rgba(0, 0, 0, 0.55), inset -3px 0 0 rgba(255, 255, 255, 0.08); }
+    .book:hover { transform: translateY(-7px) rotate(-1deg); }
+    .book .b-emoji { font-size: 1.7rem; }
+    .book .b-title { font-weight: 700; font-size: 0.86rem; line-height: 1.25; margin-top: 8px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; }
+    .book .b-count { margin-top: auto; font-size: 0.7rem; opacity: 0.8; }
+    .book.new { --bc: transparent; background: none; border: 2px dashed rgba(255, 255, 255, 0.2); box-shadow: none; color: var(--muted); align-items: center; justify-content: center; text-align: center; padding: 10px; }
+    .book.attached::after { content: '📎'; position: absolute; top: 6px; right: 8px; font-size: 0.9rem; }
+
+    .book-view { max-width: 900px; margin: 0 auto; padding-top: 18px; }
+    .book-top { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; }
+    .book-top .book { flex-shrink: 0; cursor: default; }
+    .book-top .book:hover { transform: none; }
+    .book-meta { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 8px; }
+    .book-meta .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .book-meta input[type=color] { width: 40px; height: 34px; padding: 2px; border-radius: 8px; border: 1px solid var(--line); background: none; }
+    #b-emoji { width: 64px; text-align: center; }
+    .tool-tabs { display: flex; gap: 8px; margin: 22px 0 10px; flex-wrap: wrap; }
+    .tool-box { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px; padding: 12px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 8px; }
+    .tool-box[hidden] { display: none; }
+    .search-hit { background: rgba(0, 0, 0, 0.3); border-radius: 8px; padding: 8px 10px; font-size: 0.82rem; }
+    .search-hit .mem-src { margin-bottom: 4px; }
+    .search-hit .hit-actions { display: flex; gap: 6px; margin-top: 6px; }
+    .pages { display: flex; flex-direction: column; gap: 10px; }
+    .page { background: #f4efe4; color: #2b2620; border-radius: 6px; padding: 12px 14px; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45); }
+    .page-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+    .page-title { font-weight: 700; font-size: 0.92rem; font-family: Georgia, 'Times New Roman', serif; }
+    .page-meta { font-size: 0.7rem; color: #7a6f60; margin-top: 2px; word-break: break-all; }
+    .page-remove { background: none; border: none; color: #b91c1c; font-size: 0.75rem; flex-shrink: 0; }
+    .page-text { margin-top: 8px; font-size: 0.86rem; line-height: 1.55; white-space: pre-wrap; font-family: Georgia, 'Times New Roman', serif; max-height: 9.5em; overflow: hidden; cursor: pointer; position: relative; }
+    .page-text.clipped::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2.4em; background: linear-gradient(transparent, #f4efe4); }
+    .page-text.open { max-height: none; cursor: auto; }
+    .page-text.open::after { display: none; }
+    .page img { display: block; max-width: 100%; max-height: 380px; border-radius: 4px; margin-top: 8px; }
+
+    dialog#picker { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 14px; padding: 18px; width: min(420px, 92vw); }
+    dialog#picker::backdrop { background: rgba(0, 0, 0, 0.6); }
+    #picker h3 { margin: 0 0 10px; font-size: 1rem; }
+    #picker-list { display: flex; flex-direction: column; gap: 4px; max-height: 50vh; overflow-y: auto; margin-bottom: 10px; }
+    .pick { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; border: 1px solid transparent; background: rgba(255, 255, 255, 0.03); text-align: left; width: 100%; }
+    .pick:hover { border-color: var(--line); }
+    .pick .swatch-book { width: 14px; height: 20px; border-radius: 2px 4px 4px 2px; background: var(--bc); flex-shrink: 0; }
+    .pick .pick-count { margin-left: auto; font-size: 0.72rem; color: var(--muted); }
+    .picker-new { display: flex; gap: 6px; }
+    .picker-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+    .archived-note { font-size: 0.75rem; color: #c4b5fd; margin-top: 6px; }
+    #books-btn { width: 40px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.06); position: relative; }
+    #books-btn .badge { position: absolute; top: -6px; right: -6px; background: var(--accent); color: #fff; font-size: 0.65rem; border-radius: 999px; padding: 1px 5px; }
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 50; background: #1e1b4b; border: 1px solid #6d28d9; color: #ede9fe; padding: 10px 16px; border-radius: 10px; font-size: 0.86rem; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5); }
+    .toast.error { background: #450a0a; border-color: #b91c1c; color: #fecaca; }
+    .nav-item.lib .avatar { background: linear-gradient(135deg, #7c3aed, #b45309); color: #fff; }
     .council { align-self: stretch; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
     .council .msg.ai { max-width: none; }
     .council .pending { color: var(--muted); font-size: 0.85rem; }
@@ -217,6 +296,8 @@
         <div id="head-sub"></div>
       </div>
       <div class="head-actions">
+        <select id="skill-select" hidden title="Which of this bot's skills to use" aria-label="Skill"></select>
+        <button type="button" id="books-chip" class="chip on" hidden title="Books attached to this conversation"></button>
         <button type="button" id="members-btn" class="chip" hidden>Members ▾</button>
         <button type="button" id="voice-btn" class="chip" title="Read replies aloud">🔇 <span>Voice off</span></button>
         <button type="button" id="clear-btn" class="chip" title="Clear this conversation's history">🗑 <span>Clear</span></button>
@@ -230,6 +311,7 @@
         <div class="composer-row">
           <button type="button" id="mic-btn" title="Speak your message">🎤</button>
           <button type="button" id="image-btn" title="Create an image from what you typed (or type /image …)">🎨</button>
+          <button type="button" id="books-btn" title="Attach library books to this conversation">📚</button>
           <span id="save-hint"></span>
           <button type="button" id="save-btn" title="Store this text as a memory without asking the AI">Save as memory</button>
           <button type="submit" id="send-btn">Send</button>
@@ -237,7 +319,30 @@
       </div>
     </form>
   </main>
+
+  <section id="library-view" hidden aria-label="Library">
+    <div class="lib-head">
+      <button type="button" class="menu-btn-lib chip" id="lib-back" title="Back to the conversation">← Chat</button>
+      <h1>📚 Library</h1>
+      <span class="sub">Books of things worth keeping. Attach a book to any conversation and the AI reads it in full.</span>
+      <button type="button" class="btn" id="lib-new">+ New book</button>
+    </div>
+    <div id="lib-body"></div>
+  </section>
 </div>
+
+<dialog id="picker">
+  <h3 id="picker-title"></h3>
+  <div id="picker-list"></div>
+  <div class="picker-new">
+    <input id="picker-new-title" class="field" type="text" placeholder="…or a new book title">
+    <button type="button" class="btn" id="picker-new-add">Create</button>
+  </div>
+  <div class="picker-actions">
+    <button type="button" class="btn plain" id="picker-cancel">Cancel</button>
+    <button type="button" class="btn" id="picker-done" hidden>Done</button>
+  </div>
+</dialog>
 
 <!-- ---------- Bots panel ---------- -->
 <aside id="bots-panel" class="side-panel" aria-label="Bots">
@@ -254,6 +359,7 @@
   <p class="sub">In File Explorer, right-click the bot's folder → <b>Copy as path</b>. Everything in it (subfolders too) becomes that bot's private memory. A file in it named like <code>persona</code>, <code>personality</code>, <code>identity</code> or <code>instructions</code> (.txt/.md) is used as the starting personality.</p>
 
   <h3>🤖 Your bots</h3>
+  <div id="main-card"></div>
   <div id="bot-list"><p class="sub">Loading…</p></div>
 
   <h3>🎨 Images</h3>
@@ -339,13 +445,24 @@
   <ul>
     <li>Create bots in <b>🤖 Bots</b> from their folders. Edit each personality there — it's the bot's instructions.</li>
     <li><b>Save as memory</b> saves into whoever you're talking to.</li>
+    <li><b>Picture:</b> upload a photo or click <b>🎨 Create</b> to have the image AI paint a portrait from the personality.</li>
+    <li><b>🔊 Voice:</b> give each bot its own voice, speed and pitch (▶ Preview). ⭐ voices are the natural-sounding ones — Microsoft Edge has the best free selection. Voice choices are saved in this browser.</li>
+    <li><b>🧩 Skills:</b> add named abilities to a bot (write them, or import a .md/.txt skill file). In the chat, pick one from the 🧩 menu in the header; switch any time.</li>
+  </ul>
+
+  <h3>📚 Library</h3>
+  <ul>
+    <li>Open <b>📚 Library</b> in the sidebar: your books on a shelf, plus each bot's own <b>archive</b> where it keeps what it decides is important.</li>
+    <li>Add pages with <b>📚 Save to library</b> under any reply, memory or image; or inside a book, <b>Write a page</b> or <b>Add from memories</b> (search everything, add a piece or a whole file).</li>
+    <li><b>📎 Use in a conversation</b> (or the 📚 button by the message box) attaches books: the AI then reads them in full with every message.</li>
   </ul>
 
   <h3>🧠 AI service</h3>
   <ul>
-    <li>Choose <b>Gemini</b>, <b>Claude</b> or <b>Grok</b> and the model at the bottom-left; every bot uses it. Claude: <b>Haiku</b> (fast) → <b>Sonnet</b> → <b>Opus</b> (heavy lifting).</li>
+    <li>Choose <b>Gemini</b>, <b>Claude</b>, <b>Grok</b> or <b>Ollama (local)</b> and the model at the bottom-left; every bot uses it. Claude: <b>Haiku</b> (fast) → <b>Sonnet</b> → <b>Opus</b> (heavy lifting).</li>
     <li>A service is offered once its key is set (<code>GEMINI_API_KEY</code>, <code>ANTHROPIC_API_KEY</code>, <code>XAI_API_KEY</code>), e.g. in PowerShell:<br><code>[Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY", "your-key", "User")</code><br>then open a new terminal and restart.</li>
     <li>Only the relevant memories and recent messages are sent, with names and addresses masked.</li>
+    <li><b>🔒 Ollama (local)</b> runs AI models on this computer — nothing leaves the machine and it works offline. Start Ollama, then pick it and a model you've installed (<code>ollama pull llama3.2</code>). Bots don't create images on their own while it's selected. For full privacy, also leave 🎤 off (the browser transcribes speech online) and use voices without ⭐ (those stream from Microsoft).</li>
   </ul>
 
   <h3>🎨 Images</h3>
@@ -423,6 +540,10 @@
   const pending = {};           // target -> true while waiting for a reply
   let excluded = new Set(store.get('nuero-council-excluded', []));
   let voiceOn = store.get('nuero-voice', false);
+  let view = 'chat';            // 'chat' or 'library'
+  let library = [];             // book summaries
+  let openBookId = null;
+  let mainAvatar = null;
 
   const botById = id => bots.find(b => b.id === id);
   const MAIN_COLOR = '#0096ff';
@@ -436,14 +557,16 @@
   function who(t) {
     if (t === COUNCIL) return { name: 'Council', color: null, initial: '', council: true };
     const bot = botById(t);
-    if (bot) return { name: bot.name, color: bot.color, initial: bot.name[0].toUpperCase(), bot };
-    return { name: 'Nuero AI', color: MAIN_COLOR, initial: 'N' };
+    if (bot) return { name: bot.name, color: bot.color, initial: bot.name[0].toUpperCase(), bot, avatar: bot.avatar, voiceId: bot.id };
+    return { name: 'Nuero AI', color: MAIN_COLOR, initial: 'N', avatar: mainAvatar, voiceId: 'main' };
   }
   function councilMembers() { return bots.filter(b => !excluded.has(b.id)); }
 
   function setAvatar(el, w) {
     el.classList.toggle('council', !!w.council);
+    el.classList.toggle('has-img', !!w.avatar);
     el.style.setProperty('--c', w.color || MAIN_COLOR);
+    el.style.backgroundImage = w.avatar ? `url("${w.avatar}")` : '';
     el.textContent = w.initial;
   }
 
@@ -455,7 +578,7 @@
       const w = who(t);
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'nav-item' + (t === target ? ' active' : '');
+      b.className = 'nav-item' + (t === target && view === 'chat' ? ' active' : '');
       const av = document.createElement('div');
       av.className = 'avatar';
       setAvatar(av, w);
@@ -482,6 +605,13 @@
       }
       return d;
     };
+    const lib = document.createElement('button');
+    lib.type = 'button';
+    lib.className = 'nav-item lib' + (view === 'library' ? ' active' : '');
+    lib.innerHTML = '<div class="avatar">📚</div><div class="who"><div class="who-name">Library</div><div class="who-sub"></div></div>';
+    lib.querySelector('.who-sub').textContent = `${library.length} book${library.length === 1 ? '' : 's'}`;
+    lib.addEventListener('click', () => { showLibrary(); $('nav').classList.remove('open'); });
+    list.append(lib);
     list.append(label('Talk to'), item(MAIN, 'Main assistant · shared memory'),
                 item(COUNCIL, bots.length ? `${councilMembers().length} of ${bots.length} bots` : 'Add bots first'));
     list.append(label(`Bots (${bots.length})`, ['+ New', () => openPanel('bots-panel', true)]));
@@ -501,6 +631,7 @@
     if (t !== MAIN && t !== COUNCIL && !botById(t)) t = MAIN;
     target = t;
     store.set('nuero-target', t);
+    showChat();
     renderNav();
     renderHeader();
     renderThread();
@@ -520,6 +651,16 @@
     $('members-btn').hidden = !w.council;
     if (!w.council) $('members').hidden = true;
     $('save-hint').textContent = w.bot ? `Save as memory → ${w.name}'s private memory` : 'Save as memory → shared memory';
+    const books = attachedFor(target);
+    $('books-chip').hidden = !books.length;
+    $('books-chip').textContent = `📚 ${books.length} book${books.length === 1 ? '' : 's'}`;
+    $('books-chip').title = 'Attached: ' + books.map(id => (library.find(b => b.id === id) || {}).title).join(', ');
+    $('books-btn').innerHTML = '📚' + (books.length ? `<span class="badge">${books.length}</span>` : '');
+    const skills = w.bot ? w.bot.skills || [] : [];
+    const skillSel = $('skill-select');
+    skillSel.hidden = !skills.length;
+    skillSel.replaceChildren(new Option('🧩 No skill', ''), ...skills.map(s => new Option('🧩 ' + s.name, s.id)));
+    skillSel.value = skills.some(s => s.id === activeSkill(target)) ? activeSkill(target) : '';
     $('chat-input').placeholder = w.council ? 'Ask the council… (Enter to send)' : `Message ${w.name}… (Enter to send, Shift+Enter for a new line)`;
     renderMembers();
   }
@@ -625,8 +766,13 @@
     d.style.setProperty('--c', color);
     const head = document.createElement('div');
     head.className = 'msg-head';
-    head.innerHTML = '<span class="dot"></span><span></span>';
-    head.lastChild.textContent = (botById(e.bot) || {}).name || e.name || 'Nuero AI';
+    const face = document.createElement('span');
+    face.className = 'avatar mini';
+    const speakerWho = botById(e.bot) ? who(e.bot) : (e.bot ? { name: e.name, color, initial: (e.name || '?')[0] } : who(MAIN));
+    setAvatar(face, speakerWho);
+    const nameEl = document.createElement('span');
+    nameEl.textContent = (botById(e.bot) || {}).name || e.name || 'Nuero AI';
+    head.append(face, nameEl);
     const body = document.createElement('div');
     body.className = 'md';
     body.innerHTML = renderMarkdown(e.text);
@@ -634,7 +780,15 @@
 
     const foot = document.createElement('div');
     foot.className = 'msg-foot';
-    if (e.ai) { const via = document.createElement('span'); via.textContent = 'via ' + e.ai; foot.appendChild(via); }
+    if (e.ai) { const via = document.createElement('span'); via.textContent = 'via ' + e.ai + (e.skill ? ' · 🧩 ' + e.skill : ''); foot.appendChild(via); }
+    const speaker = (botById(e.bot) || {}).name || e.name || 'Nuero AI';
+    if (e.text) {
+      const keep = document.createElement('button');
+      keep.type = 'button';
+      keep.textContent = '📚 Save to library';
+      keep.addEventListener('click', () => saveToBook({ text: e.text, title: e.text.split('\n')[0].slice(0, 60), origin: `${speaker}'s reply`, bot: e.bot || null }));
+      foot.appendChild(keep);
+    }
     const mems = e.memories || [];
     const list = document.createElement('div');
     list.className = 'mem-list';
@@ -654,7 +808,13 @@
       note.textContent = '🎨 ' + e.image_error;
       body.appendChild(note);
     }
-    if (e.ai || mems.length) d.append(foot, list);
+    for (const a of e.archived || []) {
+      const note = document.createElement('div');
+      note.className = 'archived-note';
+      note.textContent = `🗄 ${speaker} archived “${a.title}” in ${a.book_title}`;
+      body.appendChild(note);
+    }
+    if (e.ai || mems.length || e.text) d.append(foot, list);
     return d;
   }
 
@@ -675,7 +835,13 @@
     });
     a.appendChild(im);
     const cap = document.createElement('figcaption');
-    cap.textContent = (img.requested ? '🎨 Created at your request: ' : `🎨 ${img.by}'s idea: `) + img.prompt + ' · ' + img.provider;
+    cap.textContent = (img.requested ? '🎨 Created at your request: ' : `🎨 ${img.by}'s idea: `) + img.prompt + ' · ' + img.provider + ' ';
+    const keep = document.createElement('button');
+    keep.type = 'button';
+    keep.textContent = '📚 Save';
+    keep.style.cssText = 'background:none;border:none;color:#c4b5fd;font-size:0.75rem;padding:0';
+    keep.addEventListener('click', () => saveToBook({ image: img.file || img.url.split('/').pop(), title: img.prompt.slice(0, 60), text: img.prompt, origin: img.requested ? 'Image you asked for' : `${img.by}'s image` }));
+    cap.appendChild(keep);
     fig.append(a, cap);
     return fig;
   }
@@ -689,6 +855,13 @@
     const label = document.createElement('span');
     label.textContent = owner + ' · ' + (m.source || 'unknown');
     src.appendChild(label);
+    const keep = document.createElement('button');
+    keep.type = 'button';
+    keep.textContent = '📚';
+    keep.title = 'Save this memory to a library book';
+    keep.style.color = '#c4b5fd';
+    keep.addEventListener('click', () => saveToBook({ text: m.text, title: m.text.split('\n')[0].slice(0, 60), source: m.source, origin: 'Memory', bot: m.bot !== 'shared' ? m.bot : null }));
+    src.appendChild(keep);
     if (!m.gone) {
       const forget = document.createElement('button');
       forget.type = 'button';
@@ -723,8 +896,9 @@
         const card = document.createElement('div');
         card.className = 'msg ai';
         card.style.setProperty('--c', member.color);
-        card.innerHTML = '<div class="msg-head"><span class="dot"></span><span></span></div><div class="pending">' +
+        card.innerHTML = '<div class="msg-head"><span class="avatar mini"></span><span></span></div><div class="pending">' +
           (e.done ? 'No answer.' : 'Thinking…') + '</div>';
+        setAvatar(card.querySelector('.avatar'), botById(member.id) ? who(member.id) : { color: member.color, initial: member.name[0] });
         card.querySelector('.msg-head span:last-child').textContent = member.name;
         grid.appendChild(card);
       } else if (result.error) {
@@ -793,11 +967,12 @@
     appendEntry(t, { type: 'user', text });
     setPending(t, true);
     try {
-      const r = await api('/api/chat', { text, bot: t === MAIN ? null : t, history });
+      const r = await api('/api/chat', { text, bot: t === MAIN ? null : t, history, books: attachedFor(t), skill: activeSkill(t) || null });
       const w = who(t);
       appendEntry(t, { type: 'ai', text: r.reply, ai: r.ai, memories: r.memories, bot: r.bot, name: w.name, color: w.color,
-                       images: r.images, image_error: r.image_error });
-      if (t === target) speak(r.reply);
+                       images: r.images, image_error: r.image_error, archived: r.archived, skill: r.skill });
+      if (r.archived && r.archived.length) loadLibrary();
+      if (t === target) speak(r.reply, false, w.voiceId);
     } catch (err) {
       appendEntry(t, { type: 'error', text: 'Error: ' + err.message });
     } finally {
@@ -854,7 +1029,7 @@
     try {
       const res = await fetch('/api/council', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, bots: members.map(b => b.id) })
+        body: JSON.stringify({ text, bots: members.map(b => b.id), books: attachedFor(COUNCIL) })
       });
       if (!res.ok) throw new Error((await res.json()).error || res.statusText);
       const reader = res.body.getReader();
@@ -873,7 +1048,8 @@
           if (!result.bot) { appendEntry(COUNCIL, { type: 'error', text: 'Error: ' + result.error }); continue; }
           entry.results[result.bot] = result;
           redraw();
-          if (!result.error && target === COUNCIL) speak(result.bot_name + ' says: ' + result.reply, true);
+          if (result.archived && result.archived.length) loadLibrary();
+          if (!result.error && target === COUNCIL) speak(result.bot_name + ' says: ' + result.reply, true, result.bot);
         }
       }
     } catch (err) {
@@ -925,24 +1101,41 @@
     $('voice-btn').classList.toggle('on', voiceOn);
     $('voice-btn').innerHTML = voiceOn ? '🔊 <span>Voice on</span>' : '🔇 <span>Voice off</span>';
   }
-  function pickVoice() {
-    const voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
-    return voices.find(v => /natural/i.test(v.name)) || voices.find(v => v.default) || voices[0];
+  // Per-bot voice choice lives in this browser: available voices differ from computer to computer
+  const voiceSettings = id => store.get('nuero-voice:' + id, { name: '', rate: 1, pitch: 1 });
+  const setVoiceSettings = (id, s) => store.set('nuero-voice:' + id, s);
+  function allVoices() {
+    if (!('speechSynthesis' in window)) return [];
+    // Neural "Natural"/"Online" voices first, then English, then the rest
+    const score = v => (/natural|online|neural/i.test(v.name) ? 0 : 2) + (v.lang.startsWith('en') ? 0 : 1);
+    return speechSynthesis.getVoices().slice().sort((a, b) => score(a) - score(b) || a.name.localeCompare(b.name));
   }
-  function speak(text, queue = false) {
-    if (!voiceOn || !('speechSynthesis' in window)) return;
+  function pickVoice(id) {
+    const wanted = id && voiceSettings(id).name;
+    const voices = allVoices();
+    const english = voices.filter(v => v.lang.startsWith('en'));
+    return (wanted && voices.find(v => v.name === wanted)) ||
+      english.find(v => /natural/i.test(v.name)) || english.find(v => v.default) || english[0] || voices[0];
+  }
+  function speak(text, queue = false, id = 'main', force = false) {
+    if ((!voiceOn && !force) || !('speechSynthesis' in window)) return;
     if (!queue) speechSynthesis.cancel();
     const clean = text.replace(/```[\s\S]*?```/g, ' code block omitted. ').replace(/[*_#`>|~]/g, '').replace(/\[(.*?)\]\(.*?\)/g, '$1');
-    const voice = pickVoice();
+    const voice = pickVoice(id);
+    const { rate, pitch } = voiceSettings(id);
     for (const chunk of clean.match(/[^.!?\n]+[.!?]*\s*/g) || []) {
       if (!chunk.trim()) continue;
       const u = new SpeechSynthesisUtterance(chunk);
       if (voice) u.voice = voice;
+      u.rate = rate || 1;
+      u.pitch = pitch || 1;
       speechSynthesis.speak(u);
     }
   }
   if ('speechSynthesis' in window) {
     speechSynthesis.getVoices();
+    // Voices load after the page; refresh the voice menus when they arrive
+    speechSynthesis.addEventListener('voiceschanged', () => { if ($('bots-panel').classList.contains('open')) renderBotList(); });
     $('voice-btn').addEventListener('click', () => {
       voiceOn = !voiceOn;
       if (!voiceOn) speechSynthesis.cancel();
@@ -1000,14 +1193,14 @@
     if (!aiStatus) return '';
     const p = aiStatus.providers.find(x => x.id === aiStatus.current.provider);
     const m = p && p.models.find(x => x.id === aiStatus.current.model);
-    return (p ? p.label : '') + ' · ' + (m ? m.label.split(' — ')[0] : aiStatus.current.model);
+    return (p && p.local ? '🔒 ' : '') + (p ? p.label : '') + ' · ' + (m ? m.label.split(' — ')[0] : aiStatus.current.model);
   }
   function renderAi(status) {
     aiStatus = status;
     $('provider-select').replaceChildren(...status.providers.map(p => {
-      const opt = new Option(p.available ? p.label : p.label + ' (no key)', p.id);
+      const opt = new Option(p.available ? p.label : `${p.label} (${p.missing_label})`, p.id);
       opt.disabled = !p.available;
-      opt.title = p.available ? '' : 'Set ' + p.key_env + ' and restart Nuero AI to use ' + p.label;
+      opt.title = p.available ? (p.local ? 'Runs on this computer: nothing leaves the machine' : '') : p.missing_hint;
       return opt;
     }));
     $('provider-select').value = status.current.provider;
@@ -1056,7 +1249,11 @@
 
   // ================================================================ bots
   async function loadBots() {
-    try { bots = (await api('/api/bots')).bots; } catch (e) { bots = []; }
+    try {
+      const data = await api('/api/bots');
+      bots = data.bots;
+      mainAvatar = data.main.avatar;
+    } catch (e) { bots = []; }
     for (const id of [...excluded]) if (!botById(id)) excluded.delete(id);
     renderFolderOwners();
     if (target !== MAIN && target !== COUNCIL && !botById(target)) target = MAIN;
@@ -1065,7 +1262,194 @@
     renderBotList();
   }
 
+  const mk = (text, cls, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + cls; b.textContent = text; b.addEventListener('click', fn); return b; };
+  const openSections = new Set();  // keeps Voice/Skills sections open across re-renders
+
+  function section(key, title) {
+    const d = document.createElement('details');
+    d.className = 'card-section';
+    d.open = openSections.has(key);
+    d.addEventListener('toggle', () => d.open ? openSections.add(key) : openSections.delete(key));
+    const s = document.createElement('summary');
+    s.textContent = title;
+    d.appendChild(s);
+    return d;
+  }
+
+  // Square-crop and shrink an uploaded picture in the browser before sending it
+  function squareDataUrl(file, size = 320) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const side = Math.min(img.width, img.height);
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = size;
+        canvas.getContext('2d').drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, size, size);
+        URL.revokeObjectURL(img.src);
+        resolve(canvas.toDataURL('image/jpeg', 0.9));
+      };
+      img.onerror = () => reject(new Error('That file is not a picture this browser can read.'));
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  function avatarRow(ownerId, w, msg) {
+    const row = document.createElement('div');
+    row.className = 'avatar-row';
+    const av = document.createElement('div');
+    av.className = 'avatar xl';
+    setAvatar(av, w);
+    const actions = document.createElement('div');
+    actions.className = 'avatar-actions';
+    const file = document.createElement('input');
+    file.type = 'file';
+    file.accept = 'image/*';
+    file.hidden = true;
+    file.addEventListener('change', async () => {
+      if (!file.files[0]) return;
+      try {
+        await api('/api/avatar', { id: ownerId, data: await squareDataUrl(file.files[0]) });
+        say(msg, 'Picture updated.', false);
+        await loadBots();
+      } catch (err) { say(msg, err.message, true); }
+    });
+    const create = mk('🎨 Create', '', async () => {
+      const idea = prompt(`Describe ${w.name}'s picture, or leave blank to base it on the personality:`, '');
+      if (idea === null) return;
+      create.disabled = true;
+      say(msg, 'Painting a portrait… (this can take a few seconds)', false);
+      try {
+        await api('/api/avatar/generate', { id: ownerId, prompt: idea });
+        say(msg, 'Portrait created.', false);
+        await loadBots();
+      } catch (err) { say(msg, err.message, true); create.disabled = false; }
+    });
+    create.title = 'Have the image AI paint a portrait (needs a Gemini or Grok key)';
+    actions.append(mk('Upload picture', '', () => file.click()), create);
+    if (w.avatar) actions.append(mk('Remove', 'plain', async () => { await api('/api/avatar/delete', { id: ownerId }); await loadBots(); }));
+    row.append(av, actions, file);
+    return row;
+  }
+
+  function voiceSection(ownerId, name) {
+    const d = section('voice:' + ownerId, '🔊 Voice');
+    if (!('speechSynthesis' in window)) { d.append('This browser cannot speak.'); return d; }
+    const s = voiceSettings(ownerId);
+    const grid = document.createElement('div');
+    grid.className = 'voice-grid';
+    const sel = document.createElement('select');
+    sel.appendChild(new Option('Automatic (best available)', ''));
+    for (const v of allVoices()) sel.appendChild(new Option(`${/natural|online|neural/i.test(v.name) ? '⭐ ' : ''}${v.name} (${v.lang})`, v.name));
+    sel.value = s.name || '';
+    const range = (min, max, value) => { const r = document.createElement('input'); r.type = 'range'; r.min = min; r.max = max; r.step = 0.05; r.value = value; return r; };
+    const rate = range(0.6, 1.5, s.rate || 1), pitch = range(0.6, 1.5, s.pitch || 1);
+    const saveVoice = () => setVoiceSettings(ownerId, { name: sel.value, rate: Number(rate.value), pitch: Number(pitch.value) });
+    [sel, rate, pitch].forEach(el => el.addEventListener('change', saveVoice));
+    grid.append('Voice', sel, 'Speed', rate, 'Pitch', pitch);
+    const preview = mk('▶ Preview', '', () => { saveVoice(); speak(`Hi, I'm ${name}. This is how I sound.`, false, ownerId, true); });
+    const hint = document.createElement('p');
+    hint.className = 'sub';
+    hint.textContent = allVoices().some(v => /natural/i.test(v.name))
+      ? '⭐ voices are high-quality neural voices.'
+      : 'Tip: Microsoft Edge offers free, much more natural "⭐ Natural" voices — open this page in Edge to use them.';
+    const actions = document.createElement('div');
+    actions.className = 'bot-actions';
+    actions.appendChild(preview);
+    d.append(grid, actions, hint);
+    return d;
+  }
+
+  function skillsSection(bot, msg) {
+    const skills = bot.skills || [];
+    const d = section('skills:' + bot.id, `🧩 Skills (${skills.length})`);
+    const editor = (skill) => {
+      const box = document.createElement('div');
+      box.className = 'skill-edit';
+      const n = document.createElement('input');
+      n.className = 'field';
+      n.placeholder = 'Skill name — e.g. Copywriter';
+      n.value = skill ? skill.name : '';
+      const ins = document.createElement('textarea');
+      ins.className = 'field';
+      ins.placeholder = 'What this skill does and how to do it — e.g. "Write punchy marketing copy: short sentences, one clear call to action…"';
+      ins.value = skill ? skill.instructions : '';
+      const file = document.createElement('input');
+      file.type = 'file';
+      file.accept = '.md,.txt';
+      file.hidden = true;
+      file.addEventListener('change', async () => {
+        const f = file.files[0];
+        if (!f) return;
+        let text = await f.text();
+        // Skill files often start with "---\nname: …\ndescription: …\n---"
+        const fm = text.match(/^---\s*\n([\s\S]*?)\n---\s*\n?/);
+        if (fm) {
+          const nm = fm[1].match(/^name:\s*(.+)$/m);
+          if (nm && !n.value) n.value = nm[1].trim();
+          const desc = fm[1].match(/^description:\s*(.+)$/m);
+          text = (desc ? desc[1].trim() + '\n\n' : '') + text.slice(fm[0].length);
+        }
+        if (!n.value) n.value = f.name.replace(/\.(md|txt)$/i, '').replace(/[-_]+/g, ' ');
+        ins.value = text.trim();
+      });
+      const actions = document.createElement('div');
+      actions.className = 'bot-actions';
+      actions.append(mk('Import file…', 'plain', () => file.click()));
+      if (skill) actions.append(mk('Delete', 'danger', async () => {
+        if (!confirm(`Delete the skill “${skill.name}” from ${bot.name}?`)) return;
+        await api('/api/bots/skills/delete', { bot: bot.id, id: skill.id });
+        await loadBots();
+      }));
+      actions.append(mk(skill ? 'Save skill' : 'Add skill', '', async () => {
+        try {
+          if (skill) await api('/api/bots/skills/update', { bot: bot.id, id: skill.id, name: n.value, instructions: ins.value });
+          else await api('/api/bots/skills', { bot: bot.id, name: n.value, instructions: ins.value });
+          say(msg, skill ? 'Skill saved.' : `Skill added. Pick it from the 🧩 menu when chatting with ${bot.name}.`, false);
+          await loadBots();
+        } catch (err) { say(msg, err.message, true); }
+      }));
+      box.append(n, ins, actions, file);
+      return box;
+    };
+    for (const skill of skills) {
+      const row = document.createElement('div');
+      row.className = 'skill-row';
+      const nm = document.createElement('span');
+      nm.className = 'skill-name';
+      nm.textContent = '🧩 ' + skill.name;
+      let open = null;
+      row.append(nm, mk('Edit', 'plain', () => {
+        if (open) { open.remove(); open = null; return; }
+        open = editor(skill);
+        row.after(open);
+      }));
+      d.appendChild(row);
+    }
+    const addLabel = document.createElement('p');
+    addLabel.className = 'sub';
+    addLabel.textContent = skills.length ? 'Add another skill:' : 'Skills are extra abilities you can switch on per conversation (🧩 menu in the chat header).';
+    d.append(addLabel, editor(null));
+    return d;
+  }
+
+  function renderMainCard() {
+    const card = document.createElement('div');
+    card.className = 'bot-card';
+    const msg = document.createElement('p');
+    msg.className = 'panel-msg';
+    const title = document.createElement('div');
+    title.style.fontWeight = '700';
+    title.textContent = 'Nuero AI (main assistant)';
+    const note = document.createElement('p');
+    note.className = 'sub';
+    note.style.margin = '0';
+    note.textContent = 'Its personality is the identity_frequency.txt file (see 🧠 Memory).';
+    card.append(title, avatarRow('main', who(MAIN), msg), note, voiceSection('main', 'Nuero AI'), msg);
+    $('main-card').replaceChildren(card);
+  }
+
   function renderBotList() {
+    renderMainCard();
     const list = $('bot-list');
     list.replaceChildren();
     if (!bots.length) { list.innerHTML = '<p class="sub">No bots yet.</p>'; return; }
@@ -1074,14 +1458,11 @@
       card.className = 'bot-card';
       const head = document.createElement('div');
       head.className = 'bot-card-head';
-      const av = document.createElement('div');
-      av.className = 'avatar';
-      setAvatar(av, who(bot.id));
       const name = document.createElement('input');
       name.className = 'field';
       name.value = bot.name;
       name.setAttribute('aria-label', 'Bot name');
-      head.append(av, name);
+      head.append(name);
       const folders = document.createElement('div');
       folders.className = 'bot-folders' + (bot.folders.length ? '' : ' none');
       folders.textContent = bot.folders.length ? '📁 ' + bot.folders.join('\n📁 ') : 'No folder — add one in 🧠 Memory → Watched folders (choose this bot in the menu).';
@@ -1100,7 +1481,6 @@
       msg.className = 'panel-msg';
       const actions = document.createElement('div');
       actions.className = 'bot-actions';
-      const mk = (text, cls, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + cls; b.textContent = text; b.addEventListener('click', fn); return b; };
       actions.append(
         mk('Chat', 'plain', () => { closePanels(); selectTarget(bot.id); }),
         mk('Delete', 'danger', async () => {
@@ -1120,7 +1500,8 @@
           } catch (err) { say(msg, err.message, true); }
         })
       );
-      card.append(head, folders, persona, draws, actions, msg);
+      card.append(head, avatarRow(bot.id, who(bot.id), msg), folders, persona, draws, actions,
+                  voiceSection(bot.id, bot.name), skillsSection(bot, msg), msg);
       list.appendChild(card);
     }
   }
@@ -1141,6 +1522,348 @@
       $('new-bot-add').disabled = false;
     }
   });
+
+  // ================================================================ library
+  const TEXT_FILE = /\.(txt|md|log|py)$/i;
+  function attachedFor(t) {
+    const ids = store.get('nuero-books:' + t, []);
+    return library.length ? ids.filter(id => library.some(b => b.id === id)) : ids;
+  }
+  function setAttached(t, ids) { store.set('nuero-books:' + t, ids); renderHeader(); }
+  const activeSkill = t => store.get('nuero-skill:' + t, '');
+  $('skill-select').addEventListener('change', () => {
+    store.set('nuero-skill:' + target, $('skill-select').value);
+    const s = $('skill-select').selectedOptions[0];
+    toast($('skill-select').value ? `${who(target).name} is now using ${s.textContent.replace('🧩 ', '')}` : 'No skill active');
+  });
+
+  function toast(text, isError) {
+    const el = document.createElement('div');
+    el.className = 'toast' + (isError ? ' error' : '');
+    el.textContent = text;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2800);
+  }
+
+  async function loadLibrary() {
+    try { library = (await api('/api/library')).books; } catch (e) { return; }
+    renderNav();
+    renderHeader();
+    if (view === 'library') renderLibrary();
+  }
+
+  function showLibrary(bookId = null) {
+    view = 'library';
+    openBookId = bookId;
+    $('chat').hidden = true;
+    $('library-view').hidden = false;
+    renderNav();
+    renderLibrary();
+  }
+  function showChat() {
+    view = 'chat';
+    $('chat').hidden = false;
+    $('library-view').hidden = true;
+  }
+  $('lib-back').addEventListener('click', () => { showChat(); renderNav(); });
+
+  function bookCover(b, onClick) {
+    const el = document.createElement('button');
+    el.type = 'button';
+    el.className = 'book' + (attachedFor(target).includes(b.id) ? ' attached' : '');
+    el.style.setProperty('--bc', b.color);
+    el.title = b.title + (attachedFor(target).includes(b.id) ? ` (attached to ${who(target).name})` : '');
+    el.innerHTML = '<div class="b-emoji"></div><div class="b-title"></div><div class="b-count"></div>';
+    el.querySelector('.b-emoji').textContent = b.emoji;
+    el.querySelector('.b-title').textContent = b.title;
+    el.querySelector('.b-count').textContent = `${b.count} page${b.count === 1 ? '' : 's'}` + (b.images ? ` · ${b.images} 🖼` : '');
+    if (onClick) el.addEventListener('click', onClick);
+    return el;
+  }
+
+  function renderLibrary() {
+    return openBookId ? renderBook(openBookId) : renderShelves();
+  }
+
+  function renderShelves() {
+    const body = $('lib-body');
+    body.replaceChildren();
+    const shelf = (title, books, emptyText, withNew) => {
+      const h = document.createElement('div');
+      h.className = 'shelf-title';
+      h.textContent = title;
+      const s = document.createElement('div');
+      s.className = 'shelf';
+      for (const b of books) s.appendChild(bookCover(b, () => showLibrary(b.id)));
+      if (withNew) {
+        const n = document.createElement('button');
+        n.type = 'button';
+        n.className = 'book new';
+        n.textContent = '+ New book';
+        n.addEventListener('click', newBook);
+        s.appendChild(n);
+      }
+      if (!books.length && emptyText) { const e = document.createElement('div'); e.className = 'shelf-empty'; e.textContent = emptyText; s.appendChild(e); }
+      body.append(h, s);
+    };
+    shelf('Your books', library.filter(b => b.kind !== 'archive'), '', true);
+    shelf('Bot archives', library.filter(b => b.kind === 'archive'),
+          'When a bot decides something is important enough to keep, its archive book appears here.', false);
+  }
+
+  async function newBook() {
+    const title = prompt('Title for the new book (e.g. "Garden notes"):');
+    if (!title || !title.trim()) return null;
+    try {
+      const book = await api('/api/library/books', { title });
+      await loadLibrary();
+      return book;
+    } catch (err) { toast(err.message, true); return null; }
+  }
+  $('lib-new').addEventListener('click', async () => { const b = await newBook(); if (b) showLibrary(b.id); });
+
+  async function renderBook(bookId) {
+    const body = $('lib-body');
+    let book;
+    try { book = await api('/api/library/book/' + bookId); }
+    catch (err) { openBookId = null; return renderShelves(); }
+    body.replaceChildren();
+    const view_ = document.createElement('div');
+    view_.className = 'book-view';
+
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.className = 'chip';
+    back.textContent = '← All books';
+    back.addEventListener('click', () => showLibrary(null));
+
+    const top = document.createElement('div');
+    top.className = 'book-top';
+    top.style.marginTop = '14px';
+    const summary = library.find(b => b.id === book.id) || { ...book, count: book.items.length, images: 0 };
+    const cover = bookCover(summary);
+    const meta = document.createElement('div');
+    meta.className = 'book-meta';
+    meta.innerHTML = `
+      <div class="row"><input id="b-title" class="field" style="flex:1;font-weight:700;font-size:1rem" aria-label="Title"></div>
+      <div class="row"><input id="b-emoji" class="field" aria-label="Emoji" title="Cover emoji"><input id="b-color" type="color" title="Cover color"><button type="button" class="btn" id="b-save">Save cover</button></div>
+      <div class="sub" id="b-info"></div>
+      <div class="row"><button type="button" class="btn" id="b-use">📎 Use in a conversation</button><button type="button" class="btn danger" id="b-delete">Delete book</button></div>`;
+    top.append(cover, meta);
+    view_.append(back, top);
+    body.appendChild(view_);
+    $('b-title').value = book.title;
+    $('b-emoji').value = book.emoji;
+    $('b-color').value = book.color;
+    const owner = book.kind === 'archive' ? (botById(book.bot) || {}).name || 'Nuero AI' : null;
+    const usedBy = [MAIN, COUNCIL, ...bots.map(b => b.id)].filter(t => attachedFor(t).includes(book.id)).map(t => who(t).name);
+    $('b-info').textContent = (owner ? `${owner}'s own archive — it adds pages when something matters to it. ` : '') +
+      `${book.items.length} page${book.items.length === 1 ? '' : 's'}` + (usedBy.length ? ` · attached to ${usedBy.join(', ')}` : ' · not attached to any conversation');
+
+    $('b-save').addEventListener('click', async () => {
+      try { await api('/api/library/books/update', { id: book.id, title: $('b-title').value, emoji: $('b-emoji').value, color: $('b-color').value }); await loadLibrary(); toast('Cover saved'); }
+      catch (err) { toast(err.message, true); }
+    });
+    $('b-delete').addEventListener('click', async () => {
+      if (!confirm(`Delete the book “${book.title}” and its ${book.items.length} pages? Memories and files are not affected.`)) return;
+      await api('/api/library/books/delete', book.id);
+      openBookId = null;
+      await loadLibrary();
+    });
+    $('b-use').addEventListener('click', async () => {
+      const t = await pickFrom({
+        title: `Attach “${book.title}” to…`,
+        options: [MAIN, COUNCIL, ...bots.map(b => b.id)].map(t => ({ value: t, label: who(t).name, color: who(t).color || '#c084fc',
+          meta: attachedFor(t).includes(book.id) ? 'attached' : '' }))
+      });
+      if (!t) return;
+      if (!attachedFor(t).includes(book.id)) setAttached(t, [...attachedFor(t), book.id]);
+      selectTarget(t);
+      toast(`📚 “${book.title}” attached to ${who(t).name}`);
+    });
+
+    // Tools: write a note / add from memories
+    const tabs = document.createElement('div');
+    tabs.className = 'tool-tabs';
+    const noteBox = document.createElement('div');
+    noteBox.className = 'tool-box';
+    noteBox.hidden = true;
+    noteBox.innerHTML = `<input class="field" id="n-title" placeholder="Title (optional)"><textarea class="field" id="n-text" placeholder="Write or paste anything worth keeping…"></textarea>
+      <div class="bot-actions"><button type="button" class="btn" id="n-add">Add page</button></div>`;
+    const searchBox = document.createElement('div');
+    searchBox.className = 'tool-box';
+    searchBox.hidden = true;
+    searchBox.innerHTML = `<div class="path-box" style="margin:0"><input class="field" id="s-q" placeholder="Search every memory — e.g. tomatoes, launch plan, Japan"><button type="button" class="btn" id="s-go">Search</button></div><div id="s-results" style="display:flex;flex-direction:column;gap:6px"></div>`;
+    const tab = (text, box) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip';
+      b.textContent = text;
+      b.addEventListener('click', () => { const open = box.hidden; noteBox.hidden = searchBox.hidden = true; box.hidden = !open; });
+      return b;
+    };
+    const hint = document.createElement('span');
+    hint.className = 'sub';
+    hint.style.alignSelf = 'center';
+    hint.textContent = 'Replies and images: use the 📚 buttons in a conversation.';
+    tabs.append(tab('✍️ Write a page', noteBox), tab('🔍 Add from memories', searchBox), hint);
+    view_.append(tabs, noteBox, searchBox);
+
+    noteBox.querySelector('#n-add').addEventListener('click', async () => {
+      const text = $('n-text').value.trim();
+      if (!text) return;
+      try { await api('/api/library/items', { book: book.id, text, title: $('n-title').value, origin: 'Your note' }); await loadLibrary(); }
+      catch (err) { toast(err.message, true); }
+    });
+    const runSearch = async () => {
+      const q = $('s-q').value.trim();
+      const out = $('s-results');
+      if (!q) return;
+      out.innerHTML = '<span class="sub">Searching…</span>';
+      const { results } = await api('/api/memories/search?q=' + encodeURIComponent(q));
+      out.replaceChildren();
+      if (!results.length) out.innerHTML = '<span class="sub">No memories found.</span>';
+      for (const r of results) {
+        const hit = document.createElement('div');
+        hit.className = 'search-hit';
+        const ownerName = r.bot && r.bot !== 'shared' ? ((botById(r.bot) || {}).name || 'a bot') + "'s memory" : 'Shared';
+        hit.innerHTML = '<div class="mem-src"><span></span></div><div class="mem-text"></div><div class="hit-actions"></div>';
+        hit.querySelector('.mem-src span').textContent = ownerName + ' · ' + (r.source || 'saved in chat');
+        hit.querySelector('.mem-text').textContent = r.text.length > 300 ? r.text.slice(0, 300) + '…' : r.text;
+        const actions = hit.querySelector('.hit-actions');
+        const add = (label, payload) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'btn';
+          b.textContent = label;
+          b.addEventListener('click', async () => {
+            try { await api('/api/library/items', { book: book.id, ...payload }); b.textContent = '✓ Added'; b.disabled = true; await loadLibrary(); }
+            catch (err) { toast(err.message, true); }
+          });
+          actions.appendChild(b);
+        };
+        add('Add this', { text: r.text, title: r.text.split('\n')[0].slice(0, 60), source: r.source, origin: 'Memory', bot: r.bot !== 'shared' ? r.bot : null });
+        if (TEXT_FILE.test(r.source || '')) add('Add whole file', { path: r.source });
+        out.appendChild(hit);
+      }
+    };
+    $('s-go').addEventListener('click', runSearch);
+    $('s-q').addEventListener('keydown', e => { if (e.key === 'Enter') runSearch(); });
+
+    // Pages, newest first
+    const pages = document.createElement('div');
+    pages.className = 'pages';
+    if (!book.items.length) pages.innerHTML = '<p class="sub">This book is empty. Write a page, add memories, or use 📚 Save in a conversation.</p>';
+    for (const item of [...book.items].reverse()) {
+      const p = document.createElement('div');
+      p.className = 'page';
+      p.innerHTML = '<div class="page-head"><div><div class="page-title"></div><div class="page-meta"></div></div><button type="button" class="page-remove">Remove</button></div>';
+      p.querySelector('.page-title').textContent = item.title;
+      p.querySelector('.page-meta').textContent = [item.origin, item.source, new Date(item.added).toLocaleDateString()].filter(Boolean).join(' · ');
+      p.querySelector('.page-remove').addEventListener('click', async () => {
+        if (!confirm(`Remove “${item.title}” from this book?`)) return;
+        await api('/api/library/items/delete', { book: book.id, item: item.id });
+        await loadLibrary();
+      });
+      if (item.image) {
+        const img = document.createElement('img');
+        img.src = '/images/' + encodeURIComponent(item.image);
+        img.alt = item.title;
+        p.appendChild(img);
+      }
+      if (item.text && !(item.image && item.text === item.title)) {
+        const t = document.createElement('div');
+        t.className = 'page-text';
+        t.textContent = item.text;
+        t.addEventListener('click', () => t.classList.add('open'));
+        p.appendChild(t);
+        requestAnimationFrame(() => { if (t.scrollHeight > t.clientHeight + 4) t.classList.add('clipped'); });
+      }
+      pages.appendChild(p);
+    }
+    view_.appendChild(pages);
+  }
+
+  // ---- picker dialog: choose one option, or several with multi ----
+  function pickFrom({ title, options, multi = false, selected = [], allowNew = false }) {
+    return new Promise(resolve => {
+      const dlg = $('picker');
+      $('picker-title').textContent = title;
+      const list = $('picker-list');
+      list.replaceChildren();
+      const chosen = new Set(selected);
+      for (const o of options) {
+        const row = document.createElement(multi ? 'label' : 'button');
+        if (!multi) row.type = 'button';
+        row.className = 'pick';
+        if (multi) {
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.checked = chosen.has(o.value);
+          cb.addEventListener('change', () => cb.checked ? chosen.add(o.value) : chosen.delete(o.value));
+          row.appendChild(cb);
+        }
+        const sw = document.createElement('span');
+        sw.className = 'swatch-book';
+        sw.style.setProperty('--bc', o.color || '#7c3aed');
+        const label = document.createElement('span');
+        label.textContent = o.label;
+        const meta = document.createElement('span');
+        meta.className = 'pick-count';
+        meta.textContent = o.meta || '';
+        row.append(sw, label, meta);
+        if (!multi) row.addEventListener('click', () => finish(o.value));
+        list.appendChild(row);
+      }
+      if (!options.length) list.innerHTML = '<p class="sub">No books yet.</p>';
+      $('picker-done').hidden = !multi;
+      document.querySelector('.picker-new').style.display = allowNew ? '' : 'none';
+      $('picker-new-title').value = '';
+      const finish = value => { cleanup(); dlg.close(); resolve(value); };
+      const onDone = () => finish([...chosen]);
+      const onCancel = () => finish(null);
+      const onNew = () => { const t = $('picker-new-title').value.trim(); if (t) finish({ newTitle: t }); };
+      const onKey = e => { if (e.key === 'Enter') onNew(); };
+      const cleanup = () => {
+        $('picker-done').removeEventListener('click', onDone);
+        $('picker-cancel').removeEventListener('click', onCancel);
+        $('picker-new-add').removeEventListener('click', onNew);
+        $('picker-new-title').removeEventListener('keydown', onKey);
+        dlg.removeEventListener('cancel', onCancel);
+      };
+      $('picker-done').addEventListener('click', onDone);
+      $('picker-cancel').addEventListener('click', onCancel);
+      $('picker-new-add').addEventListener('click', onNew);
+      $('picker-new-title').addEventListener('keydown', onKey);
+      dlg.addEventListener('cancel', onCancel);
+      dlg.showModal();
+    });
+  }
+
+  const bookOptions = () => library.map(b => ({ value: b.id, label: `${b.emoji} ${b.title}`, color: b.color,
+                                                meta: `${b.count} page${b.count === 1 ? '' : 's'}` }));
+
+  // Save a reply, memory or image into a book the user picks (or a new one)
+  async function saveToBook(payload) {
+    let choice = await pickFrom({ title: 'Save to which book?', options: bookOptions(), allowNew: true });
+    if (!choice) return;
+    try {
+      if (choice.newTitle) choice = (await api('/api/library/books', { title: choice.newTitle })).id;
+      await api('/api/library/items', { book: choice, ...payload });
+      await loadLibrary();
+      toast(`📚 Saved to “${(library.find(b => b.id === choice) || {}).title}”`);
+    } catch (err) { toast(err.message, true); }
+  }
+
+  async function chooseAttached() {
+    if (!library.length) { toast('No books yet — create one in 📚 Library.', true); return; }
+    const ids = await pickFrom({ title: `Books ${who(target).name} reads from`, options: bookOptions(), multi: true, selected: attachedFor(target) });
+    if (ids === null) return;
+    setAttached(target, ids);
+    toast(ids.length ? `📚 ${who(target).name} now reads ${ids.length} book${ids.length === 1 ? '' : 's'} with every message` : 'No books attached');
+  }
+  $('books-btn').addEventListener('click', chooseAttached);
+  $('books-chip').addEventListener('click', chooseAttached);
 
   // ================================================================ image settings
   function renderImageSettings(s) {
@@ -1255,6 +1978,7 @@
     selectTarget(target);
     try { renderAi(await api('/api/ai')); } catch (e) { /* server still starting */ }
     loadImageSettings();
+    loadLibrary();
   })();
 </script>
 </body>

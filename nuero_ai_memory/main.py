@@ -17,8 +17,8 @@ def show_ai_options(pipeline):
         if p["available"]:
             print(f"  {p['id']:7} models: {', '.join(m['id'] for m in p['models'])}")
         else:
-            print(f"  {p['id']:7} (no key - set {p['key_env']})")
-    print("  Switch with e.g.  /ai claude sonnet   /ai grok   /ai gemini flash-lite\n")
+            print(f"  {p['id']:7} ({p['missing_label']} - {p['missing_hint']})")
+    print("  Switch with e.g.  /ai claude sonnet   /ai grok   /ai ollama llama   /ai gemini flash-lite\n")
 
 
 def show_bots(pipeline, current):
@@ -103,6 +103,8 @@ def run_cli_chat():
                 print(f"  Saved: {os.path.abspath(os.path.join('storage', 'images', image['file']))}")
             if result["image_error"]:
                 print(f"\n  [{result['image_error']}]")
+            for item in result["archived"]:
+                print(f"\n  [{name} archived \"{item['title']}\" in {item['book_title']}]")
             print("-"*50 + "\n")
         except (KeyboardInterrupt, EOFError):
             break
@@ -112,8 +114,8 @@ def run_cli_chat():
 
 if __name__ == "__main__":
     if not any(p.has_key() for p in PROVIDERS.values()):
-        keys = ", ".join(p.key_env for p in PROVIDERS.values())
-        print(f"[WARN]: No AI key is set ({keys}); chat requests will fail until one is.")
+        keys = ", ".join(p.key_env for p in PROVIDERS.values() if p.id != "ollama")
+        print(f"[WARN]: No AI service is available. Set a key ({keys}) or start Ollama; chat fails until then.")
 
     # 1. Establish structural directories before booting daemons
     os.makedirs("storage/vault", exist_ok=True)

@@ -5,3 +5,5 @@ __pycache__/
 .venv/
 storage/ingested.json
 storage/images/
+storage/avatars/
+storage/library.json

@@ -2,6 +2,7 @@
 raising ProviderError with a message that's safe to show in the chat.
 history is a list of {"role": "user" | "assistant", "text": ...}, oldest first, not including prompt."""
 import os
+import re
 import time
 
 import httpx
@@ -37,6 +38,15 @@ class Provider:
 
     def has_key(self) -> bool:
         return bool(os.environ.get(self.key_env, "").strip())
+
+    @property
+    def missing_label(self):
+        """Shown next to the service name when it can't be used."""
+        return "no key"
+
+    @property
+    def missing_hint(self):
+        return f"Set {self.key_env} and restart Nuero AI to use {self.label}."
 
     def _key(self) -> str:
         if not self.has_key():
@@ -372,4 +382,87 @@ class GrokProvider(Provider):
                 raise ProviderError(f"Grok error: {details or code.name}") from e
 
 
-PROVIDERS = {p.id: p for p in (GeminiProvider(), ClaudeProvider(), GrokProvider())}
+# ---------------------------------------------------------------- Ollama (local)
+
+def _ollama_host():
+    """OLLAMA_HOST as Ollama itself reads it ("0.0.0.0:11434", "localhost", "http://…"), as a URL to call."""
+    host = os.environ.get("OLLAMA_HOST", "").strip() or "127.0.0.1:11434"
+    if "://" not in host:
+        host = "http://" + host
+    scheme, rest = host.split("://", 1)
+    rest = rest.replace("0.0.0.0", "127.0.0.1")
+    if ":" not in rest.split("/")[0]:
+        rest = rest.split("/")[0] + ":11434"
+    return f"{scheme}://{rest}".rstrip("/")
+
+
+class OllamaProvider(Provider):
+    """Models running on this computer through Ollama: nothing leaves the machine, works offline."""
+    id = "ollama"
+    label = "Ollama (local)"
+    key_env = "OLLAMA_HOST"
+    default_model = os.environ.get("OLLAMA_MODEL", "")
+    TIMEOUT = float(os.environ.get("OLLAMA_TIMEOUT", "300"))  # local models on modest hardware can be slow
+
+    def __init__(self):
+        super().__init__()
+        self._up, self._checked = False, 0.0
+
+    def has_key(self):
+        """'Available' means the Ollama server answers; checked at most every 10 seconds."""
+        if time.time() - self._checked > 10:
+            try:
+                self._up = httpx.get(f"{_ollama_host()}/api/version", timeout=1.5).status_code == 200
+            except httpx.HTTPError:
+                self._up = False
+            self._checked = time.time()
+        return self._up
+
+    @property
+    def missing_label(self):
+        return "not running"
+
+    @property
+    def missing_hint(self):
+        return "Start Ollama on this computer, then pick it again."
+
+    def models(self):
+        # Always re-list, so models pulled while Nuero AI runs show up
+        try:
+            names = [m["name"] for m in httpx.get(f"{_ollama_host()}/api/tags", timeout=3).json().get("models", [])]
+        except (httpx.HTTPError, ValueError):
+            names = []
+        if names and not self.default_model:
+            self.default_model = names[0]
+        return [{"id": n, "label": n} for n in names] or [{"id": self.default_model or "llama3.2", "label": self.default_model or "llama3.2"}]
+
+    def generate(self, model, prompt, system, history=None):
+        model = model or self.default_model or self.models()[0]["id"]
+        messages = [{"role": "system", "content": system}]
+        messages += [{"role": turn["role"], "content": turn["text"]} for turn in history or []]
+        messages.append({"role": "user", "content": prompt})
+        started = time.time()
+        try:
+            response = httpx.post(f"{_ollama_host()}/api/chat", timeout=self.TIMEOUT,
+                                  json={"model": model, "messages": messages, "stream": False})
+        except httpx.ConnectError as e:
+            raise ProviderError("Ollama isn't running. Start it on this computer, or switch AI.") from e
+        except httpx.TimeoutException as e:
+            raise ProviderBusyError(f"{model} took longer than {self.TIMEOUT:.0f}s to answer. "
+                                    "Try a smaller model, or set OLLAMA_TIMEOUT higher.") from e
+        if response.status_code == 404:
+            raise ProviderError(f"Ollama doesn't have the model {model}. Install it with: ollama pull {model}")
+        if response.status_code >= 400:
+            try:
+                detail = response.json().get("error", response.text)
+            except ValueError:
+                detail = response.text
+            raise ProviderError(f"Ollama error: {detail}")
+        text = response.json().get("message", {}).get("content", "")
+        # Reasoning models may include their thinking inline; only the answer belongs in the chat
+        text = re.sub(r"<think>.*?</think>", "", text, flags=re.S).strip()
+        print(f"\n[OLLAMA]: Replied via {model} in {time.time() - started:.1f}s")
+        return text
+
+
+PROVIDERS = {p.id: p for p in (GeminiProvider(), ClaudeProvider(), GrokProvider(), OllamaProvider())}

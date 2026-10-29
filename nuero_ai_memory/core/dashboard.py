@@ -9,13 +9,17 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from core.bots import get_bots, find_persona_text, SHARED
 from core.images import get_studio, IMAGES_DIR
+from core.library import get_library
+from core import avatars
 from core.pipeline import get_pipeline
 from core.providers import ProviderError
 from core.vector_engine import get_vault
 
 app = FastAPI()
 os.makedirs(IMAGES_DIR, exist_ok=True)
+os.makedirs(avatars.AVATARS_DIR, exist_ok=True)
 app.mount("/images", StaticFiles(directory=IMAGES_DIR), name="images")
+app.mount("/avatars", StaticFiles(directory=avatars.AVATARS_DIR), name="avatars")
 
 
 class TextIn(BaseModel):
@@ -29,6 +33,8 @@ class BotTextIn(BaseModel):
 
 class ChatIn(BotTextIn):
     history: list[dict] | None = None  # earlier turns of this conversation: [{"role", "text"}]
+    books: list[str] | None = None  # library books attached to this conversation
+    skill: str | None = None  # one of the bot's skills, for this reply
 
 
 class AiChoiceIn(BaseModel):
@@ -77,7 +83,8 @@ def post_chat(body: ChatIn):
     if not body.text.strip():
         return _error("Message is empty.")
     try:
-        return get_pipeline().respond(body.text, body.bot or None, history=body.history)
+        return get_pipeline().respond(body.text, body.bot or None, history=body.history, books=body.books,
+                                      skill=body.skill)
     except Exception as e:
         return _error(str(e), 500)
 
@@ -85,6 +92,7 @@ def post_chat(body: ChatIn):
 class CouncilIn(BaseModel):
     text: str
     bots: list[str] | None = None  # None = every bot
+    books: list[str] | None = None
 
 
 @app.post("/api/council")
@@ -98,12 +106,114 @@ def post_council(body: CouncilIn):
 
     def lines():
         try:
-            for result in pipeline.council(body.text, body.bots):
+            for result in pipeline.council(body.text, body.bots, body.books):
                 yield json.dumps(result) + "\n"
         except Exception as e:
             yield json.dumps({"error": str(e)}) + "\n"
 
     return StreamingResponse(lines(), media_type="application/x-ndjson")
+
+
+# ---------------------------------------------------------------- library
+
+@app.get("/api/library")
+def get_library_shelf():
+    return {"books": get_library().summaries()}
+
+
+@app.get("/api/library/book/{book_id}")
+def get_book(book_id: str):
+    book = get_library().get(book_id)
+    return book if book else _error("That book doesn't exist any more.", 404)
+
+
+class BookIn(BaseModel):
+    id: str | None = None
+    title: str | None = None
+    emoji: str | None = None
+    color: str | None = None
+
+
+@app.post("/api/library/books")
+def create_book(body: BookIn):
+    try:
+        return get_library().create_book(body.title, body.emoji, body.color)
+    except ValueError as e:
+        return _error(str(e))
+
+
+@app.post("/api/library/books/update")
+def update_book(body: BookIn):
+    try:
+        return get_library().update_book(body.id, body.title, body.emoji, body.color)
+    except ValueError as e:
+        return _error(str(e))
+
+
+@app.post("/api/library/books/delete")
+def delete_book(body: TextIn):
+    try:
+        get_library().delete_book(body.text)
+    except ValueError as e:
+        return _error(str(e))
+    return {"books": get_library().summaries()}
+
+
+class ItemIn(BaseModel):
+    book: str
+    text: str | None = None
+    title: str | None = None
+    source: str | None = None
+    origin: str | None = None
+    bot: str | None = None
+    image: str | None = None  # file name in storage/images
+    path: str | None = None  # add a whole text file instead of text
+
+
+@app.post("/api/library/items")
+def add_book_item(body: ItemIn):
+    try:
+        if body.path:
+            return get_library().add_file(body.book, body.path)
+        image = os.path.basename(body.image) if body.image else None  # only files from the images folder
+        if image and not os.path.isfile(os.path.join(IMAGES_DIR, image)):
+            raise ValueError("That image file no longer exists.")
+        return get_library().add_item(body.book, body.text, body.title, body.source or "",
+                                      body.origin or "", body.bot, image)
+    except ValueError as e:
+        return _error(str(e))
+
+
+class ItemRemoveIn(BaseModel):
+    book: str
+    item: str
+
+
+@app.post("/api/library/items/delete")
+def remove_book_item(body: ItemRemoveIn):
+    try:
+        get_library().remove_item(body.book, body.item)
+    except ValueError as e:
+        return _error(str(e))
+    return get_library().get(body.book)
+
+
+@app.get("/api/memories/search")
+def search_all_memories(q: str = "", limit: int = 20):
+    """Search every memory (shared and every bot's) so the user can pick pieces for a book."""
+    if not q.strip():
+        return {"results": []}
+    results = get_vault().search_memories(q, limit=max(1, min(limit, 50)))
+    return {"results": [
+        {
+            "id": r.id,
+            "text": r.payload.get("text", ""),
+            "source": str(r.payload.get("metadata", {}).get("source", "")).split(":", 1)[-1],
+            "bot": r.payload.get("metadata", {}).get("bot_id", SHARED),
+            "score": round(r.score, 3),
+        }
+        for r in results
+    ]}
 
 
 # ---------------------------------------------------------------- images
@@ -167,8 +277,13 @@ def forget_memory(body: TextIn):
 
 def _bot_list(daemon=None):
     bots = get_bots().bots
-    return {"bots": [dict(b, images=b.get("images", True), folders=daemon.folders_of(b["id"]) if daemon else [])
-                     for b in bots]}
+    urls = avatars.all_urls()
+    return {
+        "bots": [dict(b, images=b.get("images", True), skills=b.get("skills", []), avatar=urls.get(b["id"]),
+                      folders=daemon.folders_of(b["id"]) if daemon else [])
+                 for b in bots],
+        "main": {"avatar": urls.get("main")},
+    }
 
 
 @app.get("/api/bots")
@@ -234,9 +349,90 @@ def delete_bot(body: TextIn):
         get_bots().require(body.text)
         daemon.remove_bot(body.text)
         get_bots().delete(body.text)
+        avatars.remove(body.text)
     except ValueError as e:
         return _error(str(e))
     return _bot_list(daemon)
+
+
+class SkillIn(BaseModel):
+    bot: str
+    id: str | None = None
+    name: str | None = None
+    instructions: str | None = None
+
+
+@app.post("/api/bots/skills")
+def add_skill(body: SkillIn):
+    try:
+        return get_bots().add_skill(body.bot, body.name, body.instructions)
+    except ValueError as e:
+        return _error(str(e))
+
+
+@app.post("/api/bots/skills/update")
+def update_skill(body: SkillIn):
+    try:
+        return get_bots().update_skill(body.bot, body.id, body.name, body.instructions)
+    except ValueError as e:
+        return _error(str(e))
+
+
+@app.post("/api/bots/skills/delete")
+def delete_skill(body: SkillIn):
+    try:
+        get_bots().delete_skill(body.bot, body.id)
+    except ValueError as e:
+        return _error(str(e))
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------- avatars
+
+class AvatarIn(BaseModel):
+    id: str  # a bot id, or "main" for Nuero AI
+    data: str | None = None  # uploaded picture as a data: URL
+    prompt: str | None = None  # for a generated one
+
+
+def _avatar_owner(owner_id):
+    if owner_id != "main":
+        get_bots().require(owner_id)
+    return owner_id
+
+
+@app.post("/api/avatar")
+def upload_avatar(body: AvatarIn):
+    try:
+        return {"avatar": avatars.save_data_url(_avatar_owner(body.id), body.data)}
+    except ValueError as e:
+        return _error(str(e))
+
+
+@app.post("/api/avatar/generate")
+def generate_avatar(body: AvatarIn):
+    """Paints a portrait with the image AI, from the bot's personality unless a prompt is given."""
+    try:
+        owner = _avatar_owner(body.id)
+        bot = get_bots().get(owner)
+        name = bot["name"] if bot else "Nuero AI"
+        about = (bot["personality"] if bot else "a friendly, futuristic personal AI assistant")[:400]
+        prompt = (body.prompt or "").strip() or (
+            f"Portrait avatar for a character named {name}. Character: {about}. "
+            "Head and shoulders, centered, expressive, soft lighting, simple background, square composition.")
+        pipeline = get_pipeline()
+        info = get_studio().create(pipeline.scrubber.mask(prompt), auto=False)
+        return {"avatar": avatars.save_file(owner, os.path.join(IMAGES_DIR, info["file"]))}
+    except ValueError as e:
+        return _error(str(e))
+    except Exception as e:
+        return _error(str(e), 500)
+
+
+@app.post("/api/avatar/delete")
+def delete_avatar(body: AvatarIn):
+    avatars.remove(body.id)
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------- watched folders

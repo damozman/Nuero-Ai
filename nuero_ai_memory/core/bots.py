@@ -102,6 +102,54 @@ class BotRegistry:
             self._save()
         return bot
 
+    # ---- skills: named instruction sets a bot can switch between in a conversation ----
+
+    def add_skill(self, bot_id, name, instructions):
+        name, instructions = (name or "").strip(), (instructions or "").strip()
+        if not name or not instructions:
+            raise ValueError("A skill needs a name and instructions.")
+        with self.lock:
+            bot = self.require(bot_id)
+            skills = bot.setdefault("skills", [])
+            if any(s["name"].lower() == name.lower() for s in skills):
+                raise ValueError(f"{bot['name']} already has a skill called {name}.")
+            base, n = _slug(name), 2
+            skill_id = base
+            while any(s["id"] == skill_id for s in skills):
+                skill_id, n = f"{base}-{n}", n + 1
+            skill = {"id": skill_id, "name": name[:60], "instructions": instructions[:20000]}
+            skills.append(skill)
+            self._save()
+        return skill
+
+    def update_skill(self, bot_id, skill_id, name=None, instructions=None):
+        with self.lock:
+            skill = self._skill(bot_id, skill_id)
+            if name is not None and name.strip():
+                skill["name"] = name.strip()[:60]
+            if instructions is not None and instructions.strip():
+                skill["instructions"] = instructions.strip()[:20000]
+            self._save()
+        return skill
+
+    def delete_skill(self, bot_id, skill_id):
+        with self.lock:
+            bot = self.require(bot_id)
+            self._skill(bot_id, skill_id)
+            bot["skills"] = [s for s in bot.get("skills", []) if s["id"] != skill_id]
+            self._save()
+
+    def _skill(self, bot_id, skill_id):
+        skill = next((s for s in self.require(bot_id).get("skills", []) if s["id"] == skill_id), None)
+        if not skill:
+            raise ValueError("That skill doesn't exist any more.")
+        return skill
+
+    def skill(self, bot_id, skill_id):
+        """The skill, or None if the bot or skill is gone."""
+        bot = self.get(bot_id)
+        return next((s for s in bot.get("skills", []) if s["id"] == skill_id), None) if bot else None
+
     def delete(self, bot_id):
         with self.lock:
             self.require(bot_id)

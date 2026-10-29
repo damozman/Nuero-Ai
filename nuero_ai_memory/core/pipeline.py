@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from core.bots import get_bots, SHARED
 from core.images import get_studio, IMAGE_MARKER, AUTO_IMAGE_NOTE
+from core.library import get_library, ARCHIVE_MARKER, ARCHIVE_NOTE
 from core.providers import PROVIDERS, ProviderError
 from core.scrubber import MemoryScrubber
 from core.vector_engine import get_vault
@@ -84,7 +85,7 @@ class MemoryPipeline:
             raise ProviderError(f"Unknown AI '{provider_id}'. Choose from: {', '.join(PROVIDERS)}.")
         provider = PROVIDERS[provider_id]
         if not provider.has_key():
-            raise ProviderError(f"No API key for {provider.label}. Set {provider.key_env} and restart Nuero AI.")
+            raise ProviderError(provider.missing_hint)
         model = None
         if model_hint:
             ids = [m["id"] for m in provider.models()]
@@ -109,6 +110,9 @@ class MemoryPipeline:
                     "label": p.label,
                     "key_env": p.key_env,
                     "available": p.has_key(),
+                    "local": p.id == "ollama",
+                    "missing_label": p.missing_label,
+                    "missing_hint": p.missing_hint,
                     "model": self.models.get(p.id) or p.default_model,
                     "models": p.models() if p.has_key() else [],
                 }
@@ -134,9 +138,11 @@ class MemoryPipeline:
         return [{"role": t["role"], "text": self.scrubber.mask(str(t["text"])[:HISTORY_CHARS])}
                 for t in turns[-HISTORY_TURNS:]]
 
-    def respond(self, user_input: str, bot_id=None, council=False, history=None) -> dict:
+    def respond(self, user_input: str, bot_id=None, council=False, history=None, books=None, skill=None) -> dict:
         """One reply. bot_id=None is the main Nuero AI (shared memories); a bot searches its own + shared.
         history: earlier turns of this same conversation, [{"role": "user"|"assistant", "text": ...}].
+        books: library book ids attached to this conversation; the AI reads them in full.
+        skill: id of one of the bot's skills to use for this reply.
         Returns the reply, the memories it drew on, and who answered (for the dashboard)."""
         if bot_id:
             bot = self.bots.get(bot_id)
@@ -147,14 +153,20 @@ class MemoryPipeline:
             partitions = [bot_id, SHARED]
         else:
             identity, name, partitions = self._get_identity_frequency(), "Nuero AI", [SHARED]
+        active_skill = self.bots.skill(bot_id, skill) if bot_id and skill else None
+        if active_skill:
+            identity = (f"{identity}\n\n[ACTIVE SKILL: {active_skill['name']}]\n"
+                        f"Apply this skill in your reply, staying in character:\n{active_skill['instructions']}")
         if council:
             identity = f"{identity}\n\n{COUNCIL_NOTE}"
         # Bots may create images on their own, except in Council (one question could trigger a dozen)
+        # and on the local AI, where the point is that nothing leaves the computer
         studio = get_studio()
-        may_draw = not council and studio.can_auto() and (
+        may_draw = not council and self.provider_id != "ollama" and studio.can_auto() and (
             bot.get("images", True) if bot_id else studio.settings["main_auto"])
         if may_draw:
             identity = f"{identity}\n\n{AUTO_IMAGE_NOTE}"
+        identity = f"{identity}\n\n{ARCHIVE_NOTE}"
 
         memories = self.vault.search_memories(user_input, limit=3, partitions=partitions)
         raw_context = "\n---\n".join([m.payload["text"] for m in memories])
@@ -168,6 +180,12 @@ class MemoryPipeline:
         [SECURE RETRIEVED MEMORY MATRIX]:
         {masked_context}
         """
+        library_context = get_library().context_for(books)
+        if library_context:
+            system_instruction += (
+                "\n[REFERENCE LIBRARY - books the user attached to this conversation; draw on them]:\n"
+                + self.scrubber.mask(library_context) + "\n"
+            )
 
         # Snapshot the choice so a switch mid-request can't mix providers
         provider, model = self.provider, self.model
@@ -183,10 +201,17 @@ class MemoryPipeline:
             except Exception as e:
                 image_error = f"{name} tried to create an image, but it failed: {e}"
 
+        # Things the bot chose to keep go into its own archive book (and its memory)
+        archived = []
+        for title, text in ARCHIVE_MARKER.findall(reply)[:1]:
+            archived.append(self._archive(bot_id, name, self.scrubber.unmask(title), self.scrubber.unmask(text)))
+        reply = ARCHIVE_MARKER.sub("", reply).strip()
+
         return {
             "reply": self.scrubber.unmask(reply),
             "images": images,
             "image_error": image_error,
+            "archived": archived,
             "sources": [m.id for m in memories],
             "memories": [
                 {
@@ -198,9 +223,21 @@ class MemoryPipeline:
                 for m in memories
             ],
             "ai": f"{provider.label} · {model}",
+            "skill": active_skill["name"] if active_skill else None,
             "bot": bot_id,
             "bot_name": name,
         }
+
+    def _archive(self, bot_id, name, title, text):
+        bot = self.bots.get(bot_id) if bot_id else None
+        book = get_library().archive_for(bot_id or "main", name, bot["color"] if bot else "#0096ff")
+        get_library().add_item(book["id"], text=text, title=title, origin=f"Archived by {name}", bot=bot_id)
+        self.vault.add_memory(
+            f"{name} archived this on {datetime.date.today():%B %d, %Y} as \"{title}\": {text}",
+            metadata={"origin": "archive", "bot_id": bot_id or SHARED},
+        )
+        print(f"\n[LIBRARY]: {name} archived \"{title}\"")
+        return {"book": book["id"], "book_title": book["title"], "title": title}
 
     def _make_image(self, masked_prompt, bot_id, name, requested):
         """Creates an image and remembers it in the owner's memory."""
@@ -223,7 +260,7 @@ class MemoryPipeline:
         name = self.bots.get(bot_id)["name"] if bot_id else "Nuero AI"
         return self._make_image(self.scrubber.mask(prompt), bot_id, name, requested=True)
 
-    def council(self, user_input: str, bot_ids=None):
+    def council(self, user_input: str, bot_ids=None, books=None):
         """Asks several bots at once (each with its own + shared memories) and yields each
         result as soon as it's ready: the reply dict, or {"bot", "bot_name", "error"}."""
         bots = [self.bots.get(b) for b in bot_ids] if bot_ids else list(self.bots.bots)
@@ -231,7 +268,7 @@ class MemoryPipeline:
         if not bots:
             raise ProviderError("No bots to ask. Add bots first, or pick at least one council member.")
         with ThreadPoolExecutor(max_workers=max(1, min(COUNCIL_PARALLEL, len(bots)))) as pool:
-            futures = {pool.submit(self.respond, user_input, b["id"], True): b for b in bots}
+            futures = {pool.submit(self.respond, user_input, b["id"], True, None, books): b for b in bots}
             for future in as_completed(futures):
                 bot = futures[future]
                 try:

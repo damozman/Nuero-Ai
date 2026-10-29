@@ -60,8 +60,9 @@ class MemoryPipeline:
 
     @staticmethod
     def _initial_provider(saved):
-        """Saved choice, then NUERO_PROVIDER, then whichever service has a key set."""
-        for candidate in (saved, os.environ.get("NUERO_PROVIDER", "").strip().lower()):
+        """NUERO_PROVIDER (set by the launcher for this session), then the saved choice, then whichever
+        service is available."""
+        for candidate in (os.environ.get("NUERO_PROVIDER", "").strip().lower(), saved):
             if candidate in PROVIDERS and PROVIDERS[candidate].has_key():
                 return candidate
         available = [pid for pid, p in PROVIDERS.items() if p.has_key()]
@@ -73,7 +74,9 @@ class MemoryPipeline:
 
     @property
     def model(self):
-        return self.models.get(self.provider_id) or self.provider.default_model
+        # Ollama has no fixed default: fall back to the first model installed
+        return (self.models.get(self.provider_id) or self.provider.default_model
+                or self.provider.models()[0]["id"])
 
     def describe(self):
         return f"{self.provider.label} ({self.model})"

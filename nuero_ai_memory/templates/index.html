@@ -178,6 +178,21 @@
     .archived-note { font-size: 0.75rem; color: #c4b5fd; margin-top: 6px; }
     #books-btn { width: 40px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.06); position: relative; }
     #books-btn .badge { position: absolute; top: -6px; right: -6px; background: var(--accent); color: #fff; font-size: 0.65rem; border-radius: 999px; padding: 1px 5px; }
+    .song { display: flex; gap: 12px; align-items: center; background: rgba(0, 0, 0, 0.32); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px; padding: 10px; margin-top: 8px; }
+    .song .s-art { width: 76px; height: 76px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: linear-gradient(135deg, #1e1b4b, #831843); display: grid; place-items: center; font-size: 1.8rem; }
+    .song .s-body { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
+    .song .s-title { font-weight: 700; font-size: 0.92rem; }
+    .song .s-artist { font-size: 0.8rem; color: var(--muted); }
+    .song .s-why { font-size: 0.8rem; font-style: italic; color: #d8b4fe; }
+    .song audio { height: 30px; width: 100%; max-width: 300px; margin-top: 2px; }
+    .song .s-links { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; }
+    .song .s-links a, .song .s-links button { font-size: 0.72rem; padding: 3px 9px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(255, 255, 255, 0.05); color: #e5e7eb; text-decoration: none; }
+    .song .s-links a.spotify { background: #1db954; border-color: #1db954; color: #04130a; font-weight: 700; }
+    .song .s-note { font-size: 0.7rem; color: var(--muted); }
+    .page .song { background: rgba(0, 0, 0, 0.05); border-color: rgba(0, 0, 0, 0.08); }
+    .page .song .s-artist, .page .song .s-note { color: #6b5f50; }
+    .page .song .s-why { color: #6d28d9; }
+    .page .song .s-links a:not(.spotify), .page .song .s-links button { color: #2b2620; border-color: rgba(0, 0, 0, 0.2); }
     .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 50; background: #1e1b4b; border: 1px solid #6d28d9; color: #ede9fe; padding: 10px 16px; border-radius: 10px; font-size: 0.86rem; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5); }
     .toast.error { background: #450a0a; border-color: #b91c1c; color: #fecaca; }
     .nav-item.lib .avatar { background: linear-gradient(135deg, #7c3aed, #b45309); color: #fff; }
@@ -450,6 +465,13 @@
     <li><b>Picture:</b> upload a photo or click <b>🎨 Create</b> to have the image AI paint a portrait from the personality.</li>
     <li><b>🔊 Voice:</b> give each bot its own voice, speed and pitch (▶ Preview). ⭐ voices are the natural-sounding ones — Microsoft Edge has the best free selection. Voice choices are saved in this browser.</li>
     <li><b>🧩 Skills:</b> add named abilities to a bot (write them, or import a .md/.txt skill file). In the chat, pick one from the 🧩 menu in the header; switch any time.</li>
+  </ul>
+
+  <h3>🎵 Music</h3>
+  <ul>
+    <li>Talk about music, ask for recommendations, or just chat — when a song fits how a bot feels, it shares it as a <b>song card</b>: artwork, why it chose it, a 30-second preview, and <b>▶ Spotify</b> to open it in your Spotify app.</li>
+    <li>Every song a bot shares is collected in its own playlist on the <b>Playlists</b> shelf in 📚 Library. <b>📚 Save</b> also files a song in any of your books.</li>
+    <li>Song details and previews come from Apple's and Deezer's free public search; nothing is downloaded. Turn sharing off per bot with “Can share songs” in 🤖 Bots.</li>
   </ul>
 
   <h3>📚 Library</h3>
@@ -810,6 +832,7 @@
       note.textContent = '🎨 ' + e.image_error;
       body.appendChild(note);
     }
+    for (const s of e.songs || []) body.appendChild(songCard(s));
     for (const a of e.archived || []) {
       const note = document.createElement('div');
       note.className = 'archived-note';
@@ -818,6 +841,53 @@
     }
     if (e.ai || mems.length || e.text) d.append(foot, list);
     return d;
+  }
+
+  // A song a bot shared (or one saved in a book): artwork, why, 30-second preview, and links
+  function songCard(song, inBook = false) {
+    const card = document.createElement('div');
+    card.className = 'song';
+    let art;
+    if (song.artwork) { art = document.createElement('img'); art.src = song.artwork; art.alt = ''; }
+    else { art = document.createElement('div'); art.textContent = '🎵'; }
+    art.classList.add('s-art');
+    const body = document.createElement('div');
+    body.className = 's-body';
+    const line = (cls, text) => { if (!text) return; const el = document.createElement('div'); el.className = cls; el.textContent = text; body.appendChild(el); };
+    line('s-title', song.title);
+    line('s-artist', [song.artist, song.album].filter(Boolean).join(' · '));
+    if (song.why) line('s-why', '“' + song.why + '”');
+    if (song.preview) {
+      const audio = document.createElement('audio');
+      audio.controls = true;
+      audio.preload = 'none';
+      audio.src = song.preview;
+      audio.title = '30-second preview';
+      // One preview at a time
+      audio.addEventListener('play', () => document.querySelectorAll('.song audio').forEach(a => { if (a !== audio) a.pause(); }));
+      body.appendChild(audio);
+    }
+    const links = document.createElement('div');
+    links.className = 's-links';
+    const link = (text, href, cls) => { if (!href) return; const a = document.createElement('a'); a.href = href; a.target = '_blank'; a.rel = 'noopener'; a.textContent = text; if (cls) a.className = cls; links.appendChild(a); };
+    const l = song.links || {};
+    link('▶ Spotify', l.spotify, 'spotify');
+    link('YouTube', l.youtube);
+    link('Apple Music', l.apple);
+    link('Deezer', l.deezer);
+    if (!inBook) {
+      const keep = document.createElement('button');
+      keep.type = 'button';
+      keep.textContent = '📚 Save';
+      keep.title = 'Also save this song to one of your books';
+      keep.addEventListener('click', () => saveToBook({ music: song, text: song.why || '', origin: song.by ? `${song.by}'s song` : 'Song' }));
+      links.appendChild(keep);
+    }
+    body.appendChild(links);
+    if (!inBook && song.playlist) line('s-note', `🎵 Added to ${song.playlist}`);
+    if (!song.preview && !song.artwork) line('s-note', 'No preview found — use the links to listen.');
+    card.append(art, body);
+    return card;
   }
 
   function imageFigure(img) {
@@ -972,8 +1042,8 @@
       const r = await api('/api/chat', { text, bot: t === MAIN ? null : t, history, books: attachedFor(t), skill: activeSkill(t) || null });
       const w = who(t);
       appendEntry(t, { type: 'ai', text: r.reply, ai: r.ai, memories: r.memories, bot: r.bot, name: w.name, color: w.color,
-                       images: r.images, image_error: r.image_error, archived: r.archived, skill: r.skill });
-      if (r.archived && r.archived.length) loadLibrary();
+                       images: r.images, image_error: r.image_error, archived: r.archived, skill: r.skill, songs: r.songs });
+      if ((r.archived && r.archived.length) || (r.songs && r.songs.length)) loadLibrary();
       if (t === target) speak(r.reply, false, w.voiceId);
     } catch (err) {
       appendEntry(t, { type: 'error', text: 'Error: ' + err.message });
@@ -1050,7 +1120,7 @@
           if (!result.bot) { appendEntry(COUNCIL, { type: 'error', text: 'Error: ' + result.error }); continue; }
           entry.results[result.bot] = result;
           redraw();
-          if (result.archived && result.archived.length) loadLibrary();
+          if ((result.archived && result.archived.length) || (result.songs && result.songs.length)) loadLibrary();
           if (!result.error && target === COUNCIL) speak(result.bot_name + ' says: ' + result.reply, true, result.bot);
         }
       }
@@ -1150,39 +1220,67 @@
   }
 
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let recognizer = null;
+  const MIC_PAUSE_MS = 3000;     // quiet time after you stop talking before the message is sent
+  const MIC_GIVE_UP_MS = 15000;  // stop listening if nothing is said at all
+  let mic = null;                // the current listening session
   if (Recognition) {
-    $('mic-btn').addEventListener('click', () => {
-      if (recognizer) { recognizer.stop(); return; }
-      if ('speechSynthesis' in window) speechSynthesis.cancel();
-      const input = $('chat-input');
-      recognizer = new Recognition();
-      recognizer.lang = navigator.language || 'en-US';
-      recognizer.interimResults = true;
-      let finalText = '';
-      recognizer.onresult = e => {
+    // Keep listening through pauses; send only after MIC_PAUSE_MS of quiet (or when 🎤 is clicked)
+    const finishMic = () => {
+      if (!mic) return;
+      mic.stopping = true;
+      clearTimeout(mic.timer);
+      if (mic.recognizer) mic.recognizer.stop();  // onend sends whatever was heard
+      else endMic();
+    };
+    const endMic = () => {
+      const text = mic.finalText.trim();
+      mic = null;
+      $('mic-btn').classList.remove('listening');
+      renderHeader();
+      if (text) { $('chat-input').value = text; sendMessage(); }
+    };
+    const waitFor = ms => { clearTimeout(mic.timer); mic.timer = setTimeout(finishMic, ms); };
+    const listen = () => {
+      const r = new Recognition();
+      r.lang = navigator.language || 'en-US';
+      r.continuous = true;
+      r.interimResults = true;
+      mic.recognizer = r;
+      r.onresult = e => {
         let interim = '';
         for (let i = e.resultIndex; i < e.results.length; i++) {
-          if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
+          if (e.results[i].isFinal) mic.finalText += e.results[i][0].transcript + ' ';
           else interim += e.results[i][0].transcript;
         }
-        input.value = (finalText + interim).trim();
+        $('chat-input').value = (mic.finalText + interim).trim();
         autoGrow();
+        waitFor(MIC_PAUSE_MS);  // the clock restarts every time you say something
       };
-      recognizer.onerror = e => {
-        if (e.error === 'not-allowed') appendEntry(target, { type: 'error', text: 'Microphone access was blocked. Allow it in the address bar, then try again.' });
-        else if (e.error !== 'no-speech' && e.error !== 'aborted') appendEntry(target, { type: 'error', text: 'Mic error: ' + e.error });
+      r.onerror = e => {
+        if (e.error === 'no-speech' || e.error === 'aborted') return;
+        mic.stopping = true;  // a real problem: don't keep restarting
+        appendEntry(target, { type: 'error', text: e.error === 'not-allowed'
+          ? 'Microphone access was blocked. Allow it in the address bar, then try again.'
+          : 'Mic error: ' + e.error });
       };
-      recognizer.onend = () => {
-        recognizer = null;
-        $('mic-btn').classList.remove('listening');
-        renderHeader();
-        if (finalText.trim()) sendMessage();
+      r.onend = () => {
+        if (!mic) return;
+        mic.recognizer = null;
+        // The browser sometimes stops on its own during a pause: pick up again unless we're done
+        if (mic.stopping) endMic();
+        else listen();
       };
-      recognizer.start();
+      r.start();
+    };
+    $('mic-btn').addEventListener('click', () => {
+      if (mic) { finishMic(); return; }  // second click sends right away
+      if ('speechSynthesis' in window) speechSynthesis.cancel();
+      mic = { finalText: '', stopping: false, timer: null, recognizer: null };
+      $('chat-input').value = '';
+      $('chat-input').placeholder = `Listening… sends ${MIC_PAUSE_MS / 1000} seconds after you stop talking (click 🎤 to send now)`;
       $('mic-btn').classList.add('listening');
-      input.value = '';
-      input.placeholder = 'Listening… click 🎤 again to stop';
+      waitFor(MIC_GIVE_UP_MS);
+      listen();
     });
   } else {
     $('mic-btn').disabled = true;
@@ -1479,6 +1577,12 @@
       drawsBox.type = 'checkbox';
       drawsBox.checked = bot.images !== false;
       draws.append(drawsBox, document.createTextNode('Can create images on its own'));
+      const sings = document.createElement('label');
+      sings.className = 'check';
+      const singsBox = document.createElement('input');
+      singsBox.type = 'checkbox';
+      singsBox.checked = bot.music !== false;
+      sings.append(singsBox, document.createTextNode('Can share songs it’s feeling'));
       const msg = document.createElement('p');
       msg.className = 'panel-msg';
       const actions = document.createElement('div');
@@ -1496,13 +1600,13 @@
         }),
         mk('Save', '', async () => {
           try {
-            await api('/api/bots/update', { id: bot.id, name: name.value, personality: persona.value, images: drawsBox.checked });
+            await api('/api/bots/update', { id: bot.id, name: name.value, personality: persona.value, images: drawsBox.checked, music: singsBox.checked });
             say(msg, 'Saved.', false);
             await loadBots();
           } catch (err) { say(msg, err.message, true); }
         })
       );
-      card.append(head, avatarRow(bot.id, who(bot.id), msg), folders, persona, draws, actions,
+      card.append(head, avatarRow(bot.id, who(bot.id), msg), folders, persona, draws, sings, actions,
                   voiceSection(bot.id, bot.name), skillsSection(bot, msg), msg);
       list.appendChild(card);
     }
@@ -1528,7 +1632,8 @@
   // ================================================================ library
   const TEXT_FILE = /\.(txt|md|log|py)$/i;
   function attachedFor(t) {
-    const ids = store.get('nuero-books:' + t, []);
+    // The main assistant reads the built-in guide unless its books were changed by hand
+    const ids = store.get('nuero-books:' + t, t === MAIN ? ['guide'] : []);
     return library.length ? ids.filter(id => library.some(b => b.id === id)) : ids;
   }
   function setAttached(t, ids) { store.set('nuero-books:' + t, ids); renderHeader(); }
@@ -1578,7 +1683,9 @@
     el.innerHTML = '<div class="b-emoji"></div><div class="b-title"></div><div class="b-count"></div>';
     el.querySelector('.b-emoji').textContent = b.emoji;
     el.querySelector('.b-title').textContent = b.title;
-    el.querySelector('.b-count').textContent = `${b.count} page${b.count === 1 ? '' : 's'}` + (b.images ? ` · ${b.images} 🖼` : '');
+    el.querySelector('.b-count').textContent = b.kind === 'playlist'
+      ? `${b.songs || 0} song${b.songs === 1 ? '' : 's'}`
+      : `${b.count} page${b.count === 1 ? '' : 's'}` + (b.images ? ` · ${b.images} 🖼` : '') + (b.songs ? ` · ${b.songs} 🎵` : '');
     if (onClick) el.addEventListener('click', onClick);
     return el;
   }
@@ -1608,7 +1715,9 @@
       if (!books.length && emptyText) { const e = document.createElement('div'); e.className = 'shelf-empty'; e.textContent = emptyText; s.appendChild(e); }
       body.append(h, s);
     };
-    shelf('Your books', library.filter(b => b.kind !== 'archive'), '', true);
+    shelf('Your books', library.filter(b => b.kind === 'user' || b.kind === 'guide' || !b.kind), '', true);
+    shelf('Playlists', library.filter(b => b.kind === 'playlist'),
+          'Every song a bot shares lands in its own playlist here.', false);
     shelf('Bot archives', library.filter(b => b.kind === 'archive'),
           'When a bot decides something is important enough to keep, its archive book appears here.', false);
   }
@@ -1659,7 +1768,9 @@
     $('b-color').value = book.color;
     const owner = book.kind === 'archive' ? (botById(book.bot) || {}).name || 'Nuero AI' : null;
     const usedBy = [MAIN, COUNCIL, ...bots.map(b => b.id)].filter(t => attachedFor(t).includes(book.id)).map(t => who(t).name);
-    $('b-info').textContent = (owner ? `${owner}'s own archive — it adds pages when something matters to it. ` : '') +
+    if (book.kind === 'guide') $('b-delete').hidden = true;
+    $('b-info').textContent = (book.kind === 'guide' ? 'Built-in: how Nuero AI works. Attach it to any bot so it can answer questions about the app. ' : '') +
+      (owner ? `${owner}'s own archive — it adds pages when something matters to it. ` : '') +
       `${book.items.length} page${book.items.length === 1 ? '' : 's'}` + (usedBy.length ? ` · attached to ${usedBy.join(', ')}` : ' · not attached to any conversation');
 
     $('b-save').addEventListener('click', async () => {
@@ -1773,7 +1884,8 @@
         img.alt = item.title;
         p.appendChild(img);
       }
-      if (item.text && !(item.image && item.text === item.title)) {
+      if (item.music) p.appendChild(songCard({ ...item.music, why: item.text }, true));
+      else if (item.text && !(item.image && item.text === item.title)) {
         const t = document.createElement('div');
         t.className = 'page-text';
         t.textContent = item.text;

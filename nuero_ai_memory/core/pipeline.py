@@ -7,6 +7,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from core.bots import get_bots, SHARED
 from core.images import get_studio, IMAGE_MARKER, AUTO_IMAGE_NOTE
 from core.library import get_library, ARCHIVE_MARKER, ARCHIVE_NOTE
+from core import music
+from core.music import SONG_MARKER, SONG_NOTE, MAX_SONGS
 from core.providers import PROVIDERS, ProviderError
 from core.scrubber import MemoryScrubber
 from core.vector_engine import get_vault
@@ -170,6 +172,9 @@ class MemoryPipeline:
         if may_draw:
             identity = f"{identity}\n\n{AUTO_IMAGE_NOTE}"
         identity = f"{identity}\n\n{ARCHIVE_NOTE}"
+        may_share_music = bot.get("music", True) if bot_id else True
+        if may_share_music:
+            identity = f"{identity}\n\n{SONG_NOTE}"
 
         memories = self.vault.search_memories(user_input, limit=3, partitions=partitions)
         raw_context = "\n---\n".join([m.payload["text"] for m in memories])
@@ -210,7 +215,13 @@ class MemoryPipeline:
             archived.append(self._archive(bot_id, name, self.scrubber.unmask(title), self.scrubber.unmask(text)))
         reply = ARCHIVE_MARKER.sub("", reply).strip()
 
+        # Songs the bot shared: looked up, collected in its playlist book, and remembered
+        song_marks = SONG_MARKER.findall(reply)[:MAX_SONGS]
+        reply = SONG_MARKER.sub("", reply).strip()
+        songs = self._share_songs(song_marks, bot_id, name) if song_marks and may_share_music else []
+
         return {
+            "songs": songs,
             "reply": self.scrubber.unmask(reply),
             "images": images,
             "image_error": image_error,
@@ -230,6 +241,24 @@ class MemoryPipeline:
             "bot": bot_id,
             "bot_name": name,
         }
+
+    def _share_songs(self, marks, bot_id, name):
+        queries = [(self.scrubber.unmask(q), self.scrubber.unmask(why or "")) for q, why in marks]
+        with ThreadPoolExecutor(max_workers=len(queries)) as pool:
+            cards = list(pool.map(lambda qw: music.lookup(qw[0]), queries))
+        bot = self.bots.get(bot_id) if bot_id else None
+        playlist = get_library().playlist_for(bot_id or "main", name, bot["color"] if bot else "#0096ff")
+        shared = []
+        for card, (_, why) in zip(cards, queries):
+            get_library().add_item(playlist["id"], text=why, origin=f"Shared by {name}", bot=bot_id, music=card)
+            self.vault.add_memory(
+                f"{name} shared the song \"{card['title']}\" by {card['artist']} on {datetime.date.today():%B %d, %Y}"
+                + (f" because: {why}" if why else "."),
+                metadata={"origin": "song", "bot_id": bot_id or SHARED},
+            )
+            shared.append({**card, "why": why, "by": name, "playlist": playlist["title"]})
+        print(f"\n[MUSIC]: {name} shared {', '.join(c['title'] for c in cards)}")
+        return shared
 
     def _archive(self, bot_id, name, title, text):
         bot = self.bots.get(bot_id) if bot_id else None

@@ -87,12 +87,14 @@ class BotRegistry:
             self._save()
         return bot
 
-    def update(self, bot_id, name=None, personality=None, images=None):
-        """images: whether the bot may create images on its own (default True when unset)."""
+    def update(self, bot_id, name=None, personality=None, images=None, music=None):
+        """images / music: whether the bot may create images / share songs on its own (default True when unset)."""
         with self.lock:
             bot = self.require(bot_id)
             if images is not None:
                 bot["images"] = bool(images)
+            if music is not None:
+                bot["music"] = bool(music)
             if name is not None and name.strip():
                 if any(b is not bot and b["name"].lower() == name.strip().lower() for b in self.bots):
                     raise ValueError(f"There's already a bot called {name.strip()}.")

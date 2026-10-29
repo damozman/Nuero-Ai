@@ -436,6 +436,18 @@ class OllamaProvider(Provider):
             self.default_model = names[0]
         return [{"id": n, "label": n} for n in names] or [{"id": self.default_model or "llama3.2", "label": self.default_model or "llama3.2"}]
 
+    MAX_CONTEXT = int(os.environ.get("OLLAMA_MAX_CTX", "32768"))
+
+    def _context_size(self, messages):
+        """Ollama's default window is small and it silently drops the start of longer prompts - which is
+        the personality, memories and attached books. Size it to fit, in a few fixed steps, since changing
+        the size makes Ollama reload the model."""
+        needed = sum(len(m["content"]) for m in messages) // 3 + 1500  # ~3 characters per token, plus reply room
+        size = 8192
+        while size < needed and size < self.MAX_CONTEXT:
+            size *= 2
+        return min(size, self.MAX_CONTEXT)
+
     def generate(self, model, prompt, system, history=None):
         model = model or self.default_model or self.models()[0]["id"]
         messages = [{"role": "system", "content": system}]
@@ -444,7 +456,8 @@ class OllamaProvider(Provider):
         started = time.time()
         try:
             response = httpx.post(f"{_ollama_host()}/api/chat", timeout=self.TIMEOUT,
-                                  json={"model": model, "messages": messages, "stream": False})
+                                  json={"model": model, "messages": messages, "stream": False,
+                                        "options": {"num_ctx": self._context_size(messages)}})
         except httpx.ConnectError as e:
             raise ProviderError("Ollama isn't running. Start it on this computer, or switch AI.") from e
         except httpx.TimeoutException as e:

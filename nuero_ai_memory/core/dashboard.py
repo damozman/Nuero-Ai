@@ -167,6 +167,7 @@ class ItemIn(BaseModel):
     origin: str | None = None
     bot: str | None = None
     image: str | None = None  # file name in storage/images
+    music: dict | None = None  # a song card shared by a bot
     path: str | None = None  # add a whole text file instead of text
 
 
@@ -179,7 +180,7 @@ def add_book_item(body: ItemIn):
         if image and not os.path.isfile(os.path.join(IMAGES_DIR, image)):
             raise ValueError("That image file no longer exists.")
         return get_library().add_item(body.book, body.text, body.title, body.source or "",
-                                      body.origin or "", body.bot, image)
+                                      body.origin or "", body.bot, image, body.music)
     except ValueError as e:
         return _error(str(e))
 
@@ -279,7 +280,7 @@ def _bot_list(daemon=None):
     bots = get_bots().bots
     urls = avatars.all_urls()
     return {
-        "bots": [dict(b, images=b.get("images", True), skills=b.get("skills", []), avatar=urls.get(b["id"]),
+        "bots": [dict(b, images=b.get("images", True), music=b.get("music", True), skills=b.get("skills", []), avatar=urls.get(b["id"]),
                       folders=daemon.folders_of(b["id"]) if daemon else [])
                  for b in bots],
         "main": {"avatar": urls.get("main")},
@@ -329,12 +330,13 @@ class BotUpdateIn(BaseModel):
     name: str | None = None
     personality: str | None = None
     images: bool | None = None
+    music: bool | None = None
 
 
 @app.post("/api/bots/update")
 def update_bot(body: BotUpdateIn):
     try:
-        bot = get_bots().update(body.id, body.name, body.personality, body.images)
+        bot = get_bots().update(body.id, body.name, body.personality, body.images, body.music)
     except ValueError as e:
         return _error(str(e))
     return {"bot": bot}

@@ -36,6 +36,27 @@ class Library:
                 self.books = json.load(f).get("books", [])
         except (OSError, ValueError):
             self.books = []
+        self._ensure_guide()
+
+    def _ensure_guide(self):
+        """Keeps the built-in guide book present and up to date (it holds no personal data)."""
+        from core.guide import GUIDE_PAGES, GUIDE_TITLE, GUIDE_VERSION
+        guide = next((b for b in self.books if b["kind"] == "guide"), None)
+        if guide and guide.get("version") == GUIDE_VERSION:
+            return
+        if not guide:
+            guide = {"id": "guide", "title": GUIDE_TITLE, "emoji": "📘", "color": "#0369a1", "kind": "guide",
+                     "bot": None, "created": _now()}
+            self.books.insert(0, guide)
+        guide.update(version=GUIDE_VERSION, updated=_now(), items=[
+            {"id": f"guide-{n}", "title": title, "text": text, "source": "", "origin": "Built-in guide",
+             "bot": None, "image": None, "music": None, "added": _now()}
+            for n, (title, text) in enumerate(GUIDE_PAGES)
+        ])
+        try:
+            self._save()
+        except OSError:
+            pass  # storage not writable yet; the guide is still available in memory
 
     def _save(self):
         tmp = LIBRARY_PATH + ".tmp"
@@ -55,7 +76,8 @@ class Library:
     def summaries(self):
         return [
             {k: v for k, v in b.items() if k != "items"}
-            | {"count": len(b["items"]), "images": sum(1 for i in b["items"] if i.get("image"))}
+            | {"count": len(b["items"]), "images": sum(1 for i in b["items"] if i.get("image")),
+               "songs": sum(1 for i in b["items"] if i.get("music"))}
             for b in self.books
         ]
 
@@ -88,20 +110,26 @@ class Library:
 
     def delete_book(self, book_id):
         with self.lock:
-            self.require(book_id)
+            if self.require(book_id)["kind"] == "guide":
+                raise ValueError("The built-in guide can't be deleted (it's simply not used unless attached).")
             self.books = [b for b in self.books if b["id"] != book_id]
             self._save()
 
-    def add_item(self, book_id, text="", title="", source="", origin="", bot=None, image=None):
-        """origin: where it came from, e.g. "Athena's reply", "Note", "Memory", "File"."""
+    def add_item(self, book_id, text="", title="", source="", origin="", bot=None, image=None, music=None):
+        """origin: where it came from, e.g. "Athena's reply", "Note", "Memory", "File".
+        music: a song card (title, artist, album, artwork, preview, links) from core.music."""
         text, title = (text or "").strip(), (title or "").strip()
-        if not text and not image:
+        if not text and not image and not music:
             raise ValueError("Nothing to add.")
+        if music:
+            music = {k: music.get(k) for k in ("title", "artist", "album", "artwork", "preview", "links")}
+            title = title or f"{music['title']} — {music['artist']}".strip(" —")
         with self.lock:
             book = self.require(book_id)
             item = {
                 "id": uuid.uuid4().hex[:10], "title": title[:120] or (text.split("\n", 1)[0][:60] if text else "Image"),
-                "text": text, "source": source, "origin": origin, "bot": bot, "image": image, "added": _now(),
+                "text": text, "source": source, "origin": origin, "bot": bot, "image": image, "music": music,
+                "added": _now(),
             }
             book["items"].append(item)
             book["updated"] = _now()
@@ -130,15 +158,28 @@ class Library:
         book = next((b for b in self.books if b["kind"] == "archive" and b["bot"] == bot_id), None)
         return book or self.create_book(f"{bot_name}'s Archive", "🗄", color, kind="archive", bot=bot_id)
 
+    def playlist_for(self, bot_id, bot_name, color=None):
+        """The bot's playlist book, where every song it shares is collected."""
+        book = next((b for b in self.books if b["kind"] == "playlist" and b["bot"] == bot_id), None)
+        return book or self.create_book(f"{bot_name}'s Playlist", "🎵", color, kind="playlist", bot=bot_id)
+
     def context_for(self, book_ids):
         """Attached books as text for the AI, newest items first within the size budget."""
         parts, used, cut = [], 0, False
         for book in filter(None, (self.get(b) for b in book_ids or [])):
             lines = [f"### Book: {book['title']}"]
-            for item in reversed(book["items"]):
+            if book["kind"] == "guide":
+                lines.append("(How the Nuero AI app itself works. Answer questions about the app only from this guide: "
+                             "don't invent buttons, icons or steps it doesn't describe. If something isn't covered, "
+                             "say you're not sure.)")
+            # The guide reads best in order; other books newest first
+            items = book["items"] if book["kind"] == "guide" else list(reversed(book["items"]))
+            for item in items:
                 entry = f"- {item['title']}"
                 if item.get("image"):
                     entry += " (an image)"
+                if item.get("music"):
+                    entry += " (a song)"
                 if item.get("text") and item["text"] != item["title"]:
                     entry += f": {item['text']}"
                 if used + len(entry) > CONTEXT_BUDGET:

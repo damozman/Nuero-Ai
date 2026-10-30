@@ -1,6 +1,6 @@
 {
   "provider": "ollama",
   "models": {
-    "ollama": "qwen2.5:14b"
+    "ollama": "hf.co/mradermacher/DeepSeek-R1-Distill-Qwen-14B-abliterated-v2-GGUF:Q5_K_M"
   }
 }

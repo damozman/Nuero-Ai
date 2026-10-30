@@ -9,7 +9,7 @@ from core.bots import get_bots, SHARED
 from core.images import get_studio, IMAGE_MARKER, AUTO_IMAGE_NOTE
 from core.library import get_library, ARCHIVE_MARKER, ARCHIVE_NOTE
 from core import music, profile
-from core.music import SONG_MARKER, SONG_NOTE, SONG_REQUEST_NOTE, MUSIC_REQUEST, MAX_SONGS
+from core.music import SONG_MARKER, SONG_NOTE, SONG_REQUEST_NOTE, NO_SONG_TOOL_NOTE, MAX_SONGS
 from core.providers import PROVIDERS, ProviderError
 from core.scrubber import MemoryScrubber
 from core.vector_engine import get_vault
@@ -229,11 +229,15 @@ class MemoryPipeline:
         may_archive = bool(bot_id) and not library.recently_added(bot_id, "archive", ARCHIVE_COOLDOWN)
         if may_archive:
             identity = f"{identity}\n\n{ARCHIVE_NOTE}"
-        asked_for_music = bool(MUSIC_REQUEST.search(user_input))
+        # "I'm open for all recommendations" counts as asking when the conversation is about music
+        recent = council_context or " ".join(str(t.get("text", "")) for t in (history or [])[-4:])
+        asked_for_music = music.wants_music(user_input, recent)
         may_share_music = bool(bot_id) and bot.get("music", True) and (
             asked_for_music or (not council and not library.recently_added(bot_id, "playlist", SONG_COOLDOWN)))
         if may_share_music:
             identity = f"{identity}\n\n{SONG_REQUEST_NOTE if asked_for_music else SONG_NOTE}"
+        elif bot_id:
+            identity = f"{identity}\n\n{NO_SONG_TOOL_NOTE}"
 
         memories = self.vault.search_memories(memory_query or user_input, limit=3, partitions=partitions)
         raw_context = "\n---\n".join([m.payload["text"] for m in memories])
@@ -280,7 +284,7 @@ class MemoryPipeline:
 
         # Songs the bot shared: looked up, collected in its playlist book, and remembered
         song_marks = SONG_MARKER.findall(reply)[:MAX_SONGS]
-        reply = music.strip_markers(reply).strip()
+        reply = music.strip_placeholders(music.strip_markers(reply))
         songs = self._share_songs(song_marks, bot_id, name, avoid_songs) if song_marks and may_share_music else []
 
         return {
@@ -314,6 +318,10 @@ class MemoryPipeline:
         playlist = get_library().playlist_for(bot_id or "main", name, bot["color"] if bot else "#0096ff")
         shared = []
         for card, (_, why) in zip(cards, queries):
+            if not card.get("found"):
+                print(f"\n[MUSIC]: Skipped \"{card['title']}\" by {card['artist']} - not found in Apple or Deezer "
+                      f"(probably not a real song)")
+                continue
             if get_library().has_song(playlist["id"], card):
                 continue  # never the same song twice in a playlist
             if any(music.same_song(card, s) for s in shared + list(avoid or [])):

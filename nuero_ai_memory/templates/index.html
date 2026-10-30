@@ -104,6 +104,7 @@
     .md .md-h { font-weight: 700; margin: 10px 0 4px; color: #fff; }
     .md ul { margin: 4px 0 8px; padding-left: 20px; }
     .md code { background: rgba(255, 255, 255, 0.08); padding: 1px 5px; border-radius: 4px; font-size: 0.86em; }
+    .md a { color: #93c5fd; }
     .md pre { background: rgba(0, 0, 0, 0.45); padding: 10px 12px; border-radius: 8px; overflow-x: auto; margin: 6px 0 8px; }
     .md pre code { background: none; padding: 0; }
 
@@ -586,7 +587,9 @@
     return out.join('').replace(/<p>\u0000(\d+)\u0000<\/p>|\u0000(\d+)\u0000/g, (_, a, b) => blocks[a ?? b]);
   }
   function inline(s) {
-    return s.replace(/`([^`]+)`/g, '<code>$1</code>')
+    // s is already escaped, so the link text and address can't carry markup
+    return s.replace(/!?\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
             .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
             .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>');
   }

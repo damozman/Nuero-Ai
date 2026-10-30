@@ -17,9 +17,10 @@ SONG_NOTE = (
     "released songs, never one you have shared before. Never mention or explain this syntax."
 )
 SONG_REQUEST_NOTE = (
-    "The user is asking about music. Recommend songs by adding one line per song in exactly this form: "
-    "[[SONG: Artist - Song title | one sentence on why]]. Up to 5 songs, only real, released songs, and not "
-    "songs you have shared before. Never mention or explain this syntax."
+    "The user is asking about music. First reply in your own words (a sentence or two, in character), then "
+    "recommend songs by adding one line per song in exactly this form: "
+    "[[SONG: Artist - Song title | one sentence on why]]. Up to 3 songs, only real, released songs, and not "
+    "songs you have shared before. Never mention or explain this syntax, and never write links."
 )
 # The user actually asking for music (this reply may include songs even during the cooldown). Talking ABOUT
 # music ("I love music and imagery") is not a request.
@@ -29,6 +30,31 @@ MUSIC_REQUEST = re.compile(
     r"|\b(any|some|a few|your favou?rite)\s+(songs?|tracks?|music)\b"
     r"|\bwhat (songs?|music|should i (listen|play))\b"
     r"|\b(make|build) (me )?a playlist\b", re.I)
+
+
+RECOMMEND = re.compile(r"\b(recommend\w*|suggest\w*|ideas for|open (to|for)|more like (that|this|those))\b", re.I)
+MUSIC_TOPIC = re.compile(r"\b(songs?|music|tracks?|artists?|albums?|listen\w*|playlists?|genres?|bands?)\b", re.I)
+NO_SONG_TOOL_NOTE = ("If you mention a song, just name it in words (\"Title\" by Artist). Never write links, "
+                     "\"[Link to ...]\" placeholders or image markup.")
+# What small models write when they want to share a song but can't: "![Link to Bon Iver - Holocene]"
+_PLACEHOLDER = re.compile(r"!?\[\s*(?:link|listen|play)\w*(?:\s+(?:to|here|on))?\s*([^\]]*)\](?:\s*\((?!https?://)[^)]*\))?", re.I)
+
+
+def wants_music(message, context=""):
+    """The user is asking for music: explicitly, or by asking for recommendations while music is the topic."""
+    if MUSIC_REQUEST.search(message):
+        return True
+    return bool(RECOMMEND.search(message) and MUSIC_TOPIC.search(f"{context[-1500:]} {message}"))
+
+
+def strip_placeholders(text):
+    """'![Link to Bon Iver - Holocene]' becomes 'Bon Iver - Holocene'; a placeholder that names no song
+    ('![Link to contemporary track]') disappears. Real web links are left alone."""
+    def replace(m):
+        inner = m.group(1).strip(" :-")
+        return inner if re.search(r"\S\s+(-|–|—|by)\s+\S", inner) else ""
+    cleaned = _PLACEHOLDER.sub(replace, text)
+    return re.sub(r"\n\s*\n(\s*\n)+", "\n\n", cleaned).strip()
 
 
 def inline_name(query):
@@ -100,8 +126,7 @@ def _itunes(artist, title):
     if not results:
         return None
     # Originals beat remixes/live/instrumental versions; then the named artist alone beats duets and features
-    variant = re.compile(r"remix|live|instrumental|karaoke|acoustic|cover|tribute|demo|edit\b", re.I)
-    best = min(results, key=lambda x: (bool(variant.search(x.get("trackName", "") + " " + x.get("collectionName", ""))),
+    best = min(results, key=lambda x: (bool(_VARIANT.search(x.get("trackName", "") + " " + x.get("collectionName", ""))),
                                        _norm(x.get("artistName", "")) != _norm(artist)))
     return {
         "title": best.get("trackName", title), "artist": best.get("artistName", artist),
@@ -111,12 +136,21 @@ def _itunes(artist, title):
     }
 
 
+_VARIANT = re.compile(r"remix|live|instrumental|karaoke|acoustic|cover|tribute|demo|emulation|edit\b", re.I)
+
+
 def _deezer(artist, title):
-    q = f'artist:"{artist}" track:"{title}"' if artist else title
-    data = httpx.get("https://api.deezer.com/search", params={"q": q, "limit": 5}, timeout=TIMEOUT).json().get("data", [])
-    t = next((x for x in data if _matches(x.get("title", ""), x.get("artist", {}).get("name", ""), title, artist)), None)
-    if not t:
+    # The precise artist/track query sometimes returns nothing; a plain search usually finds the original
+    queries = [f'artist:"{artist}" track:"{title}"', f"{artist} {title}"] if artist else [title]
+    for q in queries:
+        data = httpx.get("https://api.deezer.com/search", params={"q": q, "limit": 10}, timeout=TIMEOUT).json().get("data", [])
+        found = [x for x in data if _matches(x.get("title", ""), x.get("artist", {}).get("name", ""), title, artist)]
+        if found:
+            break
+    else:
         return None
+    t = min(found, key=lambda x: (bool(_VARIANT.search(x.get("title", ""))),
+                                  _norm(x.get("artist", {}).get("name", "")) != _norm(artist)))
     return {
         "title": t.get("title", title), "artist": t.get("artist", {}).get("name", artist),
         "album": t.get("album", {}).get("title", ""), "artwork": t.get("album", {}).get("cover_medium"),

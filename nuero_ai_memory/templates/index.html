@@ -59,7 +59,8 @@
     .skill-row .skill-name { flex: 1; font-weight: 600; }
     .skill-edit { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
     #skill-select { max-width: 170px; border-radius: 999px; padding: 4px 10px; font-size: 0.78rem; }
-    .avatar.council { background: linear-gradient(135deg, #f97316, #c084fc, #22d3ee); }
+    /* Only without a picture: the shorthand would otherwise reset the picture's sizing (cover/center) */
+    .avatar.council:not(.has-img) { background: linear-gradient(135deg, #f97316, #c084fc, #22d3ee); }
 
     /* ---------- main chat ---------- */
     #chat { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
@@ -814,7 +815,7 @@
     d.appendChild(h);
     const p = (text, cls) => { const el = document.createElement('p'); el.textContent = text; if (cls) el.className = cls; d.appendChild(el); };
     if (w.council) {
-      if (bots.length) p(`Ask a question and ${councilMembers().length} Family Nodes answer it side by side, each from its own memory.`);
+      if (bots.length) p(`A group conversation with ${councilMembers().length} Family Nodes. They see each other's replies, can ask each other questions, and each speaks from its own memory.`);
       else {
         p('The council needs Family Nodes. Create them from their folders first.');
         const b = document.createElement('button');

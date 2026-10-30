@@ -610,6 +610,7 @@
   let library = [];             // book summaries
   let openBookId = null;
   let mainAvatar = null;
+  let councilAvatar = null;
 
   const botById = id => bots.find(b => b.id === id);
   const MAIN_COLOR = '#0096ff';
@@ -621,7 +622,7 @@
   function saveThread(t) { store.set('nuero-thread:' + t, threadOf(t).slice(-200)); }
 
   function who(t) {
-    if (t === COUNCIL) return { name: 'Council', color: null, initial: '', council: true };
+    if (t === COUNCIL) return { name: 'Council', color: null, initial: '', council: true, avatar: councilAvatar };
     const bot = botById(t);
     if (bot) return { name: bot.name, color: bot.color, initial: bot.name[0].toUpperCase(), bot, avatar: bot.avatar, voiceId: bot.id };
     return { name: 'Nuero AI', color: MAIN_COLOR, initial: 'N', avatar: mainAvatar, voiceId: 'main' };
@@ -1450,6 +1451,7 @@
       const data = await api('/api/bots');
       bots = data.bots;
       mainAvatar = data.main.avatar;
+      councilAvatar = (data.council || {}).avatar || null;
     } catch (e) { bots = []; }
     for (const id of [...excluded]) if (!botById(id)) excluded.delete(id);
     renderFolderOwners();
@@ -1511,7 +1513,9 @@
       } catch (err) { say(msg, err.message, true); }
     });
     const create = mk('🎨 Create', '', async () => {
-      const idea = prompt(`Describe ${w.name}'s picture, or leave blank to base it on the personality:`, '');
+      const idea = prompt(w.council
+        ? 'Describe the Council\'s picture, or leave blank for a Council emblem:'
+        : `Describe ${w.name}'s picture, or leave blank to base it on the personality:`, '');
       if (idea === null) return;
       create.disabled = true;
       say(msg, 'Painting a portrait… (this can take a few seconds)', false);
@@ -1642,7 +1646,20 @@
     note.style.margin = '0';
     note.textContent = 'Its personality is the identity_frequency.txt file (see 🧠 Memory).';
     card.append(title, avatarRow('main', who(MAIN), msg), note, voiceSection('main', 'Nuero AI'), msg);
-    $('main-card').replaceChildren(card);
+
+    const council = document.createElement('div');
+    council.className = 'bot-card';
+    const cmsg = document.createElement('p');
+    cmsg.className = 'panel-msg';
+    const ctitle = document.createElement('div');
+    ctitle.style.fontWeight = '700';
+    ctitle.textContent = 'Council';
+    const cnote = document.createElement('p');
+    cnote.className = 'sub';
+    cnote.style.margin = '0';
+    cnote.textContent = 'The picture shown for group conversations. 🎨 Create paints a Council emblem, or describe your own.';
+    council.append(ctitle, avatarRow('council', who(COUNCIL), cmsg), cnote, cmsg);
+    $('main-card').replaceChildren(council, card);
   }
 
   function renderBotList() {

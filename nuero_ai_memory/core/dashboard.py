@@ -313,6 +313,7 @@ def _bot_list(daemon=None):
                       folders=daemon.folders_of(b["id"]) if daemon else [])
                  for b in bots],
         "main": {"avatar": urls.get("main")},
+        "council": {"avatar": urls.get("council")},
     }
 
 
@@ -421,13 +422,13 @@ def delete_skill(body: SkillIn):
 # ---------------------------------------------------------------- avatars
 
 class AvatarIn(BaseModel):
-    id: str  # a bot id, or "main" for Nuero AI
+    id: str  # a Family Node id, "main" for Nuero AI, or "council"
     data: str | None = None  # uploaded picture as a data: URL
     prompt: str | None = None  # for a generated one
 
 
 def _avatar_owner(owner_id):
-    if owner_id != "main":
+    if owner_id not in ("main", "council"):
         get_bots().require(owner_id)
     return owner_id
 
@@ -446,11 +447,15 @@ def generate_avatar(body: AvatarIn):
     try:
         owner = _avatar_owner(body.id)
         bot = get_bots().get(owner)
-        name = bot["name"] if bot else "Nuero AI"
-        about = (bot["personality"] if bot else "a friendly, futuristic personal AI assistant")[:400]
-        prompt = (body.prompt or "").strip() or (
-            f"Portrait avatar for a character named {name}. Character: {about}. "
-            "Head and shoulders, centered, expressive, soft lighting, simple background, square composition.")
+        if owner == "council":
+            default = ("An emblem for 'the Council': a circle of distinct AI companions gathered together as one "
+                       "family. Symbolic, warm, centered, simple background, square composition.")
+        else:
+            name = bot["name"] if bot else "Nuero AI"
+            about = (bot["personality"] if bot else "a friendly, futuristic personal AI assistant")[:400]
+            default = (f"Portrait avatar for a character named {name}. Character: {about}. "
+                       "Head and shoulders, centered, expressive, soft lighting, simple background, square composition.")
+        prompt = (body.prompt or "").strip() or default
         pipeline = get_pipeline()
         info = get_studio().create(pipeline.scrubber.mask(prompt), auto=False)
         return {"avatar": avatars.save_file(owner, os.path.join(IMAGES_DIR, info["file"]))}

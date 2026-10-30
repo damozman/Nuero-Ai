@@ -1,6 +1,7 @@
 """Adapters for each AI service. Every provider takes (model, prompt, system, history) and returns reply text,
 raising ProviderError with a message that's safe to show in the chat.
-history is a list of {"role": "user" | "assistant", "text": ...}, oldest first, not including prompt."""
+history is a list of {"role": "user" | "assistant", "text": ...}, oldest first, not including prompt.
+stop: text sequences that end the reply early (used by Ollama; the pipeline trims for everyone)."""
 import os
 import re
 import time
@@ -69,7 +70,7 @@ class Provider:
     def _list_models(self) -> list:
         return []
 
-    def generate(self, model: str, prompt: str, system: str, history=None) -> str:
+    def generate(self, model: str, prompt: str, system: str, history=None, stop=None) -> str:
         raise NotImplementedError
 
 
@@ -166,7 +167,7 @@ class GeminiProvider(Provider):
             return True
         return isinstance(e, errors.APIError) and (e.code == 429 or (e.code or 0) >= 500)
 
-    def generate(self, model, prompt, system, history=None):
+    def generate(self, model, prompt, system, history=None, stop=None):
         """Calls Gemini, retrying overloads (503/429) and dropped connections,
         then switching to a backup model if the chosen one stays unavailable."""
         from google.genai import errors
@@ -268,7 +269,7 @@ class ClaudeProvider(Provider):
     def models(self):
         return [{"id": m, "label": label} for m, label, _ in CLAUDE_MODELS]
 
-    def generate(self, model, prompt, system, history=None):
+    def generate(self, model, prompt, system, history=None, stop=None):
         import anthropic
         client = self.client()
         effort = next((e for m, _, e in CLAUDE_MODELS if m == model), "low")
@@ -349,7 +350,7 @@ class GrokProvider(Provider):
             names.append(self.default_model)
         return [{"id": n, "label": n} for n in sorted(names, reverse=True)]
 
-    def generate(self, model, prompt, system, history=None):
+    def generate(self, model, prompt, system, history=None, stop=None):
         import grpc
         from xai_sdk.chat import system as system_message, user as user_message, assistant as assistant_message
         client = self.client()
@@ -448,7 +449,7 @@ class OllamaProvider(Provider):
             size *= 2
         return min(size, self.MAX_CONTEXT)
 
-    def generate(self, model, prompt, system, history=None):
+    def generate(self, model, prompt, system, history=None, stop=None):
         model = model or self.default_model or self.models()[0]["id"]
         messages = [{"role": "system", "content": system}]
         messages += [{"role": turn["role"], "content": turn["text"]} for turn in history or []]
@@ -457,7 +458,8 @@ class OllamaProvider(Provider):
         try:
             response = httpx.post(f"{_ollama_host()}/api/chat", timeout=self.TIMEOUT,
                                   json={"model": model, "messages": messages, "stream": False,
-                                        "options": {"num_ctx": self._context_size(messages)}})
+                                        "options": {"num_ctx": self._context_size(messages),
+                                                    **({"stop": stop} if stop else {})}})
         except httpx.ConnectError as e:
             raise ProviderError("Ollama isn't running. Start it on this computer, or switch AI.") from e
         except httpx.TimeoutException as e:

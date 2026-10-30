@@ -178,8 +178,26 @@ class MemoryPipeline:
         return [{"role": t["role"], "text": self.scrubber.mask(str(t["text"])[:HISTORY_CHARS])}
                 for t in turns[-HISTORY_TURNS:]]
 
+    @staticmethod
+    def _own_words(reply, me, others):
+        """Keeps only the speaker's own message. Small models given a 'Name: text' conversation tend to keep
+        writing the script - inventing lines for the user and the other Family Nodes. Cut at the first line
+        voiced as someone else, and drop a leading label with the speaker's own name."""
+        if not others:
+            return reply
+        label = r"^\s*[*_]*\s*({})\s*[*_]*\s*:"
+        other_line = re.compile(label.format("|".join(map(re.escape, others))), re.I)
+        own_label = re.compile(label.format(re.escape(me)) + r"\s*", re.I)
+        kept = []
+        for line in reply.split("\n"):
+            if other_line.match(line):
+                break
+            kept.append(own_label.sub("", line, count=1))
+        trimmed = "\n".join(kept).strip()
+        return trimmed or reply  # a reply that opens as someone else: show it rather than nothing
+
     def respond(self, user_input: str, bot_id=None, council=False, history=None, books=None, skill=None,
-                council_context=None, memory_query=None) -> dict:
+                council_context=None, memory_query=None, others=None) -> dict:
         """One reply. bot_id=None is the main Nuero AI (shared memories); a bot searches its own + shared.
         history: earlier turns of this same conversation, [{"role": "user"|"assistant", "text": ...}].
         books: library book ids attached to this conversation; the AI reads them in full.
@@ -246,7 +264,11 @@ class MemoryPipeline:
 
         # Snapshot the choice so a switch mid-request can't mix providers
         provider, model = self.provider, self.model
-        reply = provider.generate(model, masked_prompt, system_instruction, self._clean_history(history))
+        # Everyone who isn't the speaker: it must never write their lines (in Council, the other members too)
+        others = [n for n in (others or []) + [self.user_name or "User", "User"] if n and n.lower() != name.lower()]
+        reply = provider.generate(model, masked_prompt, system_instruction, self._clean_history(history),
+                                  stop=[f"\n{n}:" for n in others][:4])
+        reply = self._own_words(reply, name, others)
 
         # Pull out any image the bot decided to create; the marker never reaches the chat
         image_prompts = IMAGE_MARKER.findall(reply)
@@ -359,8 +381,10 @@ class MemoryPipeline:
             f"{others or '- (no one else this time)'}\n\n"
             f"How to take part: speak only as yourself, {me['name']}, in the first person. Respond to what "
             f"{user} and the others actually said, and feel free to ask another Family Node a question by name - "
-            f"they will answer when it is their turn. Never write lines for anyone else, and don't narrate. "
-            f"Keep it conversational and fairly short.\n\n"
+            f"they will answer when it is their turn, and {user} will answer for themself. Your reply is ONLY "
+            f"your own next message: never write lines for {user} or the others (no \"{user}:\" or "
+            f"\"Name:\" lines), never answer on their behalf, and don't narrate. Keep it conversational and "
+            f"fairly short.\n\n"
             f"[THE CONVERSATION SO FAR]\n{convo}"
         )
 
@@ -398,7 +422,8 @@ class MemoryPipeline:
         def ask(member, convo):
             context = self.scrubber.mask(self._council_context(member, members, convo))
             return self.respond(prompt, member["id"], True, None, books, council_context=context,
-                                memory_query=memory_query)
+                                memory_query=memory_query,
+                                others=[b["name"] for b in members if b["id"] != member["id"]])
 
         if together:
             for member in members:

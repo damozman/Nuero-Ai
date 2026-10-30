@@ -1,6 +1,0 @@
-{
-  "provider": "ollama",
-  "models": {
-    "ollama": "qwen2.5:14b"
-  }
-}

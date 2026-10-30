@@ -1,0 +1,4 @@
+{
+  "\bJane\s+Example\s+Doe\b": "[USER_IDENTITY]",
+  "\b123\s+Example\s+St\b": "[PRIVATE_ADDRESS]"
+}

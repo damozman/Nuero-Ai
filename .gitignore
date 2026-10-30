@@ -1,0 +1,11 @@
+# Personal to each computer - every person's own Family Nodes, names, folders and private masking rules
+nuero_ai_memory/config/bots.json
+nuero_ai_memory/config/profile.json
+nuero_ai_memory/config/watch_folders.json
+nuero_ai_memory/config/masking_rules.json
+nuero_ai_memory/config/ai_settings.json
+*.tmp
+
+# Original planning notes, kept local
+Blueprint of Birth
+Blueprint of Birth - update

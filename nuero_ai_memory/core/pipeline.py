@@ -197,7 +197,7 @@ class MemoryPipeline:
         return trimmed or reply  # a reply that opens as someone else: show it rather than nothing
 
     def respond(self, user_input: str, bot_id=None, council=False, history=None, books=None, skill=None,
-                council_context=None, memory_query=None, others=None) -> dict:
+                council_context=None, memory_query=None, others=None, avoid_songs=None) -> dict:
         """One reply. bot_id=None is the main Nuero AI (shared memories); a bot searches its own + shared.
         history: earlier turns of this same conversation, [{"role": "user"|"assistant", "text": ...}].
         books: library book ids attached to this conversation; the AI reads them in full.
@@ -288,8 +288,8 @@ class MemoryPipeline:
 
         # Songs the bot shared: looked up, collected in its playlist book, and remembered
         song_marks = SONG_MARKER.findall(reply)[:MAX_SONGS]
-        reply = SONG_MARKER.sub("", reply).strip()
-        songs = self._share_songs(song_marks, bot_id, name) if song_marks and may_share_music else []
+        reply = music.strip_markers(reply).strip()
+        songs = self._share_songs(song_marks, bot_id, name, avoid_songs) if song_marks and may_share_music else []
 
         return {
             "songs": songs,
@@ -313,7 +313,8 @@ class MemoryPipeline:
             "bot_name": name,
         }
 
-    def _share_songs(self, marks, bot_id, name):
+    def _share_songs(self, marks, bot_id, name, avoid=None):
+        """avoid: songs others already shared this Council round (no echoing each other's picks)."""
         queries = [(self.scrubber.unmask(q), self.scrubber.unmask(why or "")) for q, why in marks]
         with ThreadPoolExecutor(max_workers=len(queries)) as pool:
             cards = list(pool.map(lambda qw: music.lookup(qw[0]), queries))
@@ -323,7 +324,7 @@ class MemoryPipeline:
         for card, (_, why) in zip(cards, queries):
             if get_library().has_song(playlist["id"], card):
                 continue  # never the same song twice in a playlist
-            if any(music.same_song(card, s) for s in shared):
+            if any(music.same_song(card, s) for s in shared + list(avoid or [])):
                 continue
             get_library().add_item(playlist["id"], text=why, origin=f"Shared by {name}", bot=bot_id, music=card,
                                    by_node=True)
@@ -383,7 +384,8 @@ class MemoryPipeline:
             f"{user} and the others actually said, and feel free to ask another Family Node a question by name - "
             f"they will answer when it is their turn, and {user} will answer for themself. Your reply is ONLY "
             f"your own next message: never write lines for {user} or the others (no \"{user}:\" or "
-            f"\"Name:\" lines), never answer on their behalf, and don't narrate. Keep it conversational and "
+            f"\"Name:\" lines), never answer on their behalf, and don't narrate. Don't repeat or paraphrase what "
+            f"someone else already said - add your own angle, true to your own personality. Keep it conversational and "
             f"fairly short.\n\n"
             f"[THE CONVERSATION SO FAR]\n{convo}"
         )
@@ -419,16 +421,20 @@ class MemoryPipeline:
             lowered = user_input.lower()
             members.sort(key=lambda b: lowered.find(b["name"].lower()) if b["name"].lower() in lowered else 10**6)
 
+        shared_songs = []  # songs shared so far this round, so members don't echo each other's picks
+
         def ask(member, convo):
             context = self.scrubber.mask(self._council_context(member, members, convo))
             return self.respond(prompt, member["id"], True, None, books, council_context=context,
                                 memory_query=memory_query,
-                                others=[b["name"] for b in members if b["id"] != member["id"]])
+                                others=[b["name"] for b in members if b["id"] != member["id"]],
+                                avoid_songs=list(shared_songs))
 
         if together:
             for member in members:
                 try:
                     result = ask(member, lines)
+                    shared_songs.extend(result.get("songs", []))
                     lines.append(f"{member['name']}: {result['reply'][:COUNCIL_LINE_CHARS]}")
                     yield result
                 except Exception as e:

@@ -21,9 +21,30 @@ SONG_REQUEST_NOTE = (
     "[[SONG: Artist - Song title | one sentence on why]]. Up to 5 songs, only real, released songs, and not "
     "songs you have shared before. Never mention or explain this syntax."
 )
-# The user asking for music (this reply may include songs even during the cooldown)
-MUSIC_REQUEST = re.compile(r"\b(songs?|music|playlists?|tracks?|album|listen(ing)?|recommend\w* (me )?(a |some )?"
-                           r"(song|music|track)|what should i (play|listen))\b", re.I)
+# The user actually asking for music (this reply may include songs even during the cooldown). Talking ABOUT
+# music ("I love music and imagery") is not a request.
+MUSIC_REQUEST = re.compile(
+    r"\b(recommend|suggest|share|play|send|give|find|pick|show)\w*\b[^.?!]{0,40}?\b(songs?|music|tracks?|playlists?|"
+    r"albums?|something to listen)\b"
+    r"|\b(any|some|a few|your favou?rite)\s+(songs?|tracks?|music)\b"
+    r"|\bwhat (songs?|music|should i (listen|play))\b"
+    r"|\b(make|build) (me )?a playlist\b", re.I)
+
+
+def inline_name(query):
+    """'Artist - Title' as it should read inside a sentence: “Title” by Artist."""
+    artist, title = _split(query)
+    return f"“{title}” by {artist}" if artist else f"“{title}”"
+
+
+def strip_markers(text):
+    """Removes song lines; a song named mid-sentence stays readable as “Title” by Artist."""
+    def replace(m):
+        start = text.rfind("\n", 0, m.start()) + 1
+        end = text.find("\n", m.end())
+        line_rest = text[start:m.start()] + text[m.end():end if end >= 0 else len(text)]
+        return "" if not line_rest.strip() else inline_name(m.group(1))
+    return re.sub(r"\n{3,}", "\n\n", SONG_MARKER.sub(replace, text))
 TIMEOUT = 6.0
 
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Nuero AI</title>
+  <title>{{SYSTEM_NAME}}</title>
   <style>
     :root {
       --bg: #07070d; --panel: #0c0c16; --panel-2: #121220; --line: rgba(0, 150, 255, 0.16);
@@ -20,7 +20,7 @@
     /* ---------- left navigation ---------- */
     #nav { display: flex; flex-direction: column; background: var(--panel); border-right: 1px solid var(--line); min-height: 0; }
     .brand { padding: 18px 18px 14px; border-bottom: 1px solid var(--line); }
-    .brand-name { font-weight: 800; letter-spacing: 2px; font-size: 1.05rem; }
+    .brand-name { font-weight: 800; letter-spacing: 2px; font-size: 1.05rem; text-transform: uppercase; }
     .brand-sub { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
     #nav-list { flex: 1; overflow-y: auto; padding: 10px 10px 4px; }
     .nav-label { font-size: 0.7rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin: 12px 8px 6px; display: flex; justify-content: space-between; align-items: center; }
@@ -313,7 +313,7 @@
 <div id="app">
   <aside id="nav">
     <div class="brand">
-      <div class="brand-name">NUERO AI</div>
+      <div class="brand-name">{{SYSTEM_NAME}}</div>
       <div class="brand-sub">Personal AI with private memory</div>
     </div>
     <div id="nav-list"></div>
@@ -408,16 +408,7 @@
   <div id="bot-list"><p class="sub">Loading…</p></div>
 
   <h3>⚙️ System</h3>
-  <div class="bot-card">
-    <div style="font-weight:700">Your name</div>
-    <p class="sub" style="margin:0">What your Family Nodes call you. They're told they're talking with you, a human — so they don't mix you up with each other.</p>
-    <div class="path-box" style="margin:0">
-      <input id="user-name" class="field" type="text" placeholder="e.g. Chris">
-      <button type="button" class="btn" id="user-name-save">Save</button>
-    </div>
-    <p id="user-name-msg" class="panel-msg" style="margin:0"></p>
-  </div>
-  <div id="main-card"></div>
+  <div id="system-cards"></div>
 
   <h3>🎨 Images</h3>
   <div class="settings-grid">
@@ -435,7 +426,7 @@
 <!-- ---------- Memory panel ---------- -->
 <aside id="memory-panel" class="side-panel" aria-label="Memory">
   <h2>Memory <button type="button" class="panel-close" data-close title="Close (Esc)">✕</button></h2>
-  <p class="sub">Everything Nuero AI remembers lives on this computer. Memories are either <b>shared</b> (every Family Node can use them) or <b>private</b> to one Family Node.</p>
+  <p class="sub">Everything {{SYSTEM_NAME}} remembers lives on this computer. Memories are either <b>shared</b> (every Family Node can use them) or <b>private</b> to one Family Node.</p>
 
   <h3>📁 Watched folders</h3>
   <ul id="folder-list"><li class="sub">Loading…</li></ul>
@@ -473,7 +464,7 @@
   </div>
   <ul>
     <li><code>masking_rules.json</code> — names and details swapped for placeholders before anything is sent to an AI service, then restored in the reply.</li>
-    <li><code>identity_frequency.txt</code> — the main Nuero AI's personality.</li>
+    <li><code>identity_frequency.txt</code> — the system helper's personality ({system_name} in it is replaced with the system's name).</li>
   </ul>
 
   <h3>🌐 Memory graph</h3>
@@ -482,11 +473,11 @@
 
 <!-- ---------- Help panel ---------- -->
 <aside id="help-panel" class="side-panel" aria-label="Help">
-  <h2>How to use Nuero AI <button type="button" class="panel-close" data-close title="Close (Esc)">✕</button></h2>
+  <h2>How to use {{SYSTEM_NAME}} <button type="button" class="panel-close" data-close title="Close (Esc)">✕</button></h2>
 
   <h3>💬 Conversations</h3>
   <ul>
-    <li>Pick who to talk to in the left sidebar: any <b>Family Node</b>, the <b>Council</b>, or — under System — <b>Nuero AI</b>, the system helper that answers questions about the app itself.</li>
+    <li>Pick who to talk to in the left sidebar: any <b>Family Node</b>, the <b>Council</b>, or — under System — <b>{{SYSTEM_NAME}}</b>, the system helper that answers questions about the app itself.</li>
     <li>Each conversation is kept separately in this browser, and the AI sees its last few messages, so follow-up questions work. <b>Clear</b> starts fresh.</li>
     <li>Before answering, the AI looks up the 3 memories most related to your message. <b>memories used</b> under a reply shows them.</li>
   </ul>
@@ -554,6 +545,7 @@
 </aside>
 
 <script>
+  const SYSTEM_NAME = {{SYSTEM_NAME_JS}};  // what this household calls its system (Family panel → System)
   // ================================================================ helpers
   const $ = id => document.getElementById(id);
   const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -626,7 +618,7 @@
     if (t === COUNCIL) return { name: 'Council', color: null, initial: '', council: true, avatar: councilAvatar };
     const bot = botById(t);
     if (bot) return { name: bot.name, color: bot.color, initial: bot.name[0].toUpperCase(), bot, avatar: bot.avatar, voiceId: bot.id };
-    return { name: 'Nuero AI', color: MAIN_COLOR, initial: 'N', avatar: mainAvatar, voiceId: 'main' };
+    return { name: SYSTEM_NAME, color: MAIN_COLOR, initial: SYSTEM_NAME[0].toUpperCase(), avatar: mainAvatar, voiceId: 'main' };
   }
   // Family Nodes are the point of the app; the system helper is only the fallback
   function defaultTarget() { return bots.length ? bots[0].id : MAIN; }
@@ -691,7 +683,7 @@
     }
     lib.addEventListener('click', () => { showLibrary(); $('nav').classList.remove('open'); });
     list.append(lib);
-    // Family Nodes first; the main Nuero AI sits under System as the helper for the app itself
+    // Family Nodes first; the system helper sits under System as the helper for the app itself
     list.append(label(`Family Nodes (${bots.length})`, ['+ New', () => openPanel('bots-panel', true)]));
     if (!bots.length) {
       const e = document.createElement('div');
@@ -705,7 +697,7 @@
     }
     list.append(label('Together'),
                 item(COUNCIL, bots.length ? `${councilMembers().length} of ${bots.length} Family Nodes` : 'Add Family Nodes first'));
-    list.append(label('System'), item(MAIN, 'System helper · how Nuero AI works'));
+    list.append(label('System'), item(MAIN, `System helper · how ${SYSTEM_NAME} works`));
   }
 
   function selectTarget(t) {
@@ -727,7 +719,7 @@
     let sub;
     if (w.council) sub = `${councilMembers().length} member${councilMembers().length === 1 ? '' : 's'} · each answers from its own memory`;
     else if (w.bot) sub = `Private memory${w.bot.folders.length ? ' (' + w.bot.folders.length + ' folder' + (w.bot.folders.length > 1 ? 's' : '') + ')' : ''} + shared`;
-    else sub = 'System helper · ask how anything in Nuero AI works';
+    else sub = `System helper · ask how anything in ${SYSTEM_NAME} works`;
     $('head-sub').textContent = sub + ' · ' + aiLabel();
     $('members-btn').hidden = !w.council;
     $('mode-btn').hidden = !w.council;
@@ -828,7 +820,7 @@
       else p('No personality written yet — add one in 👪 Family Nodes so this Family Node knows who it is.');
       p(w.bot.folders.length ? 'Answers from its private folder memory plus shared memories.' : 'No folder yet — it only knows shared memories and what you save to it.');
     } else {
-      p('The system helper. Ask how anything in Nuero AI works — creating Family Nodes, skills, the library, voices, privacy — and it answers from the built-in guide.');
+      p(`The system helper. Ask how anything in ${SYSTEM_NAME} works — creating Family Nodes, skills, the library, voices, privacy — and it answers from the built-in guide.`);
       p('Your Family Nodes are in the sidebar above.');
     }
     return d;
@@ -855,7 +847,7 @@
     const speakerWho = botById(e.bot) ? who(e.bot) : (e.bot ? { name: e.name, color, initial: (e.name || '?')[0] } : who(MAIN));
     setAvatar(face, speakerWho);
     const nameEl = document.createElement('span');
-    nameEl.textContent = (botById(e.bot) || {}).name || e.name || 'Nuero AI';
+    nameEl.textContent = (botById(e.bot) || {}).name || e.name || SYSTEM_NAME;
     head.append(face, nameEl);
     const body = document.createElement('div');
     body.className = 'md';
@@ -865,7 +857,7 @@
     const foot = document.createElement('div');
     foot.className = 'msg-foot';
     if (e.ai) { const via = document.createElement('span'); via.textContent = 'via ' + e.ai + (e.skill ? ' · 🧩 ' + e.skill : ''); foot.appendChild(via); }
-    const speaker = (botById(e.bot) || {}).name || e.name || 'Nuero AI';
+    const speaker = (botById(e.bot) || {}).name || e.name || SYSTEM_NAME;
     if (e.text) {
       const keep = document.createElement('button');
       keep.type = 'button';
@@ -998,7 +990,7 @@
       const forget = document.createElement('button');
       forget.type = 'button';
       forget.textContent = 'Forget';
-      forget.title = 'Remove this memory from Nuero AI (your files are not changed)';
+      forget.title = `Remove this memory from ${SYSTEM_NAME} (your files are not changed)`;
       forget.addEventListener('click', async () => {
         if (!confirm('Forget this memory? It will no longer be used. Your files are not changed.')) return;
         try {
@@ -1634,33 +1626,88 @@
     return d;
   }
 
-  function renderMainCard() {
-    const card = document.createElement('div');
-    card.className = 'bot-card';
+  // A collapsible card like the Family Node ones: a one-line summary that opens to the details
+  function collapsibleCard(key, face, title, sub, ...content) {
+    const card = document.createElement('details');
+    card.className = 'bot-card node-card';
+    card.open = openSections.has(key);
+    card.addEventListener('toggle', () => card.open ? openSections.add(key) : openSections.delete(key));
+    const summary = document.createElement('summary');
+    const info = document.createElement('div');
+    info.className = 'node-sum';
+    info.innerHTML = '<div class="node-sum-name"></div><div class="node-sum-sub"></div>';
+    info.firstChild.textContent = title;
+    info.lastChild.textContent = sub;
+    const chevron = document.createElement('span');
+    chevron.className = 'node-chevron';
+    chevron.textContent = '▸';
+    summary.append(face, info, chevron);
+    const body = document.createElement('div');
+    body.className = 'node-body';
+    body.append(...content);
+    card.append(summary, body);
+    return card;
+  }
+
+  const faceFor = w => { const f = document.createElement('div'); f.className = 'avatar'; setAvatar(f, w); return f; };
+  const emojiFace = e => { const f = document.createElement('div'); f.className = 'avatar'; f.style.cssText = 'background:rgba(255,255,255,0.08);color:#fff;font-size:1rem'; f.textContent = e; return f; };
+  let profileData = { user_name: '', system_name: SYSTEM_NAME };
+
+  // A name field with a Save button, for the Your name / System name cards
+  function nameField(placeholder, value, onSave) {
+    const row = document.createElement('div');
+    row.className = 'path-box';
+    row.style.margin = '0';
+    const input = document.createElement('input');
+    input.className = 'field';
+    input.placeholder = placeholder;
+    input.value = value;
     const msg = document.createElement('p');
     msg.className = 'panel-msg';
-    const title = document.createElement('div');
-    title.style.fontWeight = '700';
-    title.textContent = 'Nuero AI (system helper)';
-    const note = document.createElement('p');
-    note.className = 'sub';
-    note.style.margin = '0';
-    note.textContent = 'Its personality is the identity_frequency.txt file (see 🧠 Memory).';
-    card.append(title, avatarRow('main', who(MAIN), msg), note, voiceSection('main', 'Nuero AI'), msg);
+    msg.style.margin = '0';
+    const save = mk('Save', '', () => onSave(input.value, msg));
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') save.click(); });
+    row.append(input, save);
+    return [row, msg];
+  }
+  const note = text => { const p = document.createElement('p'); p.className = 'sub'; p.style.margin = '0'; p.textContent = text; return p; };
 
-    const council = document.createElement('div');
-    council.className = 'bot-card';
+  function renderMainCard() {
+    const you = collapsibleCard('sys:you', emojiFace('🙂'), 'Your name', profileData.user_name || 'Not set — Family Nodes will say "the user"',
+      note('What your Family Nodes call you. They\'re told they\'re talking with you, a human, so they don\'t mix you up with each other.'),
+      ...nameField('e.g. Chris', profileData.user_name, async (value, msg) => {
+        try {
+          profileData = await api('/api/profile', { user_name: value });
+          say(msg, profileData.user_name ? `Saved — your Family Nodes will call you ${profileData.user_name}.` : 'Cleared.', false);
+          renderMainCard();
+        } catch (err) { say(msg, err.message, true); }
+      }));
+
+    const system = collapsibleCard('sys:name', emojiFace('🏷'), 'System name', profileData.system_name,
+      note('What this whole system is called: the header, the browser tab, the system helper, the built-in guide and the terminal all use it.'),
+      ...nameField('e.g. Neo AI', profileData.system_name, async (value, msg) => {
+        if (!value.trim()) return say(msg, 'Give the system a name.', true);
+        try {
+          profileData = await api('/api/profile', { system_name: value });
+          say(msg, `Renamed to ${profileData.system_name} — reloading…`, false);
+          setTimeout(() => location.reload(), 700);  // the name appears all over the page
+        } catch (err) { say(msg, err.message, true); }
+      }));
+
     const cmsg = document.createElement('p');
     cmsg.className = 'panel-msg';
-    const ctitle = document.createElement('div');
-    ctitle.style.fontWeight = '700';
-    ctitle.textContent = 'Council';
-    const cnote = document.createElement('p');
-    cnote.className = 'sub';
-    cnote.style.margin = '0';
-    cnote.textContent = 'The picture shown for group conversations. 🎨 Create paints a Council emblem, or describe your own.';
-    council.append(ctitle, avatarRow('council', who(COUNCIL), cmsg), cnote, cmsg);
-    $('main-card').replaceChildren(council, card);
+    const council = collapsibleCard('sys:council', faceFor(who(COUNCIL)), 'Council', 'Picture for group conversations',
+      avatarRow('council', who(COUNCIL), cmsg),
+      note('🎨 Create paints a Council emblem, or describe your own.'), cmsg);
+
+    const msg = document.createElement('p');
+    msg.className = 'panel-msg';
+    const helper = collapsibleCard('sys:helper', faceFor(who(MAIN)), SYSTEM_NAME, 'System helper · picture and voice',
+      avatarRow('main', who(MAIN), msg),
+      note('Answers questions about the app from the built-in guide. Its personality is the identity_frequency.txt file (see 🧠 Memory).'),
+      voiceSection('main', SYSTEM_NAME), msg);
+
+    $('system-cards').replaceChildren(you, system, council, helper);
   }
 
   function renderBotList() {
@@ -1741,7 +1788,7 @@
       actions.append(
         mk('Chat', 'plain', () => { closePanels(); selectTarget(bot.id); }),
         mk('Delete', 'danger', async () => {
-          if (!confirm(`Delete ${bot.name}?\n\nIts private memories are erased from Nuero AI and its folders stop being watched. The folders and files themselves are NOT touched, so you can re-create the Family Node later.`)) return;
+          if (!confirm(`Delete ${bot.name}?\n\nIts private memories are erased from ${SYSTEM_NAME} and its folders stop being watched. The folders and files themselves are NOT touched, so you can re-create the Family Node later.`)) return;
           try {
             await api('/api/bots/delete', bot.id);
             store.del('nuero-thread:' + bot.id);
@@ -1943,10 +1990,10 @@
     $('b-title').value = book.title;
     $('b-emoji').value = book.emoji;
     $('b-color').value = book.color;
-    const owner = book.kind === 'archive' ? (botById(book.bot) || {}).name || 'Nuero AI' : null;
+    const owner = book.kind === 'archive' ? (botById(book.bot) || {}).name || SYSTEM_NAME : null;
     const usedBy = [MAIN, COUNCIL, ...bots.map(b => b.id)].filter(t => attachedFor(t).includes(book.id)).map(t => who(t).name);
     if (book.kind === 'guide') $('b-delete').hidden = true;
-    $('b-info').textContent = (book.kind === 'guide' ? 'Built-in: how Nuero AI works. Attach it to any Family Node so it can answer questions about the app. ' : '') +
+    $('b-info').textContent = (book.kind === 'guide' ? `Built-in: how ${SYSTEM_NAME} works. Attach it to any Family Node so it can answer questions about the app. ` : '') +
       (owner ? `${owner}'s own archive — it adds pages when something matters to it. ` : '') +
       `${book.items.length} page${book.items.length === 1 ? '' : 's'}` + (usedBy.length ? ` · attached to ${usedBy.join(', ')}` : ' · not attached to any conversation');
 
@@ -2177,14 +2224,11 @@
 
   // ================================================================ your name
   async function loadProfile() {
-    try { $('user-name').value = (await api('/api/profile')).user_name; } catch (e) { /* server starting */ }
-  }
-  $('user-name-save').addEventListener('click', async () => {
     try {
-      const { user_name } = await api('/api/profile', { user_name: $('user-name').value });
-      say($('user-name-msg'), user_name ? `Saved — your Family Nodes will call you ${user_name}.` : 'Cleared.', false);
-    } catch (err) { say($('user-name-msg'), err.message, true); }
-  });
+      profileData = await api('/api/profile');
+      renderMainCard();
+    } catch (e) { /* server starting */ }
+  }
 
   // ================================================================ image settings
   function renderImageSettings(s) {

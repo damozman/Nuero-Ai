@@ -1,17 +1,18 @@
-"""The built-in 'Nuero AI Guide' book: how the app works, so any AI it's attached to can answer questions
-about Nuero AI itself. Contains no personal data. Bump GUIDE_VERSION when the text changes."""
+"""The built-in guide book: how the app works, so any AI it's attached to can answer questions about the app
+itself. {system_name} is filled in with the system's current name. Contains no personal data.
+Bump GUIDE_VERSION when the text changes."""
 
-GUIDE_VERSION = 3
-GUIDE_TITLE = "Nuero AI Guide"
+GUIDE_VERSION = 4
+GUIDE_TITLE = "{system_name} Guide"
 
 GUIDE_PAGES = [
-    ("What Nuero AI is",
-     "Nuero AI is a personal AI app running on the user's own computer, opened in the browser at "
+    ("What {system_name} is",
+     "{system_name} is a personal AI app running on the user's own computer, opened in the browser at "
      "http://127.0.0.1:8050. The AI personalities in it are called Family Nodes: each has its own personality "
      "and private memory. There is also a Council mode, a Library, images, music and voice. Memories are stored "
      "on this computer. The app is started with start_nuero.bat (or '.\\start_nuero local' to use the local AI)."),
     ("Who can answer",
-     "The left sidebar lists the Family Nodes first, then Council, then - under System - Nuero AI, the system "
+     "The left sidebar lists the Family Nodes first, then Council, then - under System - {system_name}, the system "
      "helper for questions about how the app works. Each conversation is kept separately, and the AI sees the "
      "last 10 messages of that conversation. Clear starts a conversation fresh. 'Your name' (Family panel, "
      "System section) tells the Family Nodes who they are talking with."),

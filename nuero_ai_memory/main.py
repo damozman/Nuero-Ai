@@ -8,6 +8,7 @@ from daemons.watcher import start_memory_daemon
 from core.dashboard import run_dashboard
 from core.pipeline import get_pipeline
 from core.providers import PROVIDERS
+from core import profile
 
 
 def show_ai_options(pipeline):
@@ -23,7 +24,8 @@ def show_ai_options(pipeline):
 
 def show_bots(pipeline, current):
     bots = pipeline.bots.bots
-    print(f"\n  Talking to: {pipeline.bots.get(current)['name'] if current else 'Nuero AI (system helper)'}")
+    helper = f"{profile.system_name()} (system helper)"
+    print(f"\n  Talking to: {pipeline.bots.get(current)['name'] if current else helper}")
     print("  Family Nodes: " + (", ".join(b["name"] for b in bots) if bots
                                 else "none yet - add them in the dashboard's Family Nodes panel"))
     print("  Switch with  /node <name>   back to the system helper with  /node none"
@@ -32,11 +34,11 @@ def show_bots(pipeline, current):
 
 def run_cli_chat():
     pipeline = get_pipeline()
-    current_bot = None  # None = the main Nuero AI
+    current_bot = None  # None = the system helper
     histories = {}  # bot id (or None) -> this session's turns, so each conversation has context
     council_log = []  # the council's shared conversation this session: [{"speaker", "text"}]
     print("\n" + "="*50)
-    print("  NUERO AI MEMORY PIPELINE OPERATIONAL")
+    print(f"  {profile.system_name().upper()} IS RUNNING")
     print(f"  Interactive Chat Mode Connected to {pipeline.describe()}")
     print("  Type /ai to switch AI services and models, /node to talk to a Family Node, /council to ask them all,")
     print("  /image <description> to create a picture")
@@ -61,9 +63,9 @@ def run_cli_chat():
                 hint = user_input.strip().split(maxsplit=1)[1].strip() if " " in user_input.strip() else ""
                 if not hint:
                     show_bots(pipeline, current_bot)
-                elif hint.lower() in ("none", "main", "nuero", "system"):
+                elif hint.lower() in ("none", "main", "system", profile.system_name().lower()):
                     current_bot = None
-                    print("\n  Now talking to Nuero AI (system helper)\n")
+                    print(f"\n  Now talking to {profile.system_name()} (system helper)\n")
                 else:
                     bot = pipeline.bots.find(hint)
                     if bot:
@@ -130,7 +132,7 @@ if __name__ == "__main__":
     # Pre-seed fallback baseline identity if missing
     if not os.path.exists("config/identity_frequency.txt"):
         with open("config/identity_frequency.txt", "w", encoding="utf-8") as f:
-            f.write("You are Nuero AI, a personal, responsive AI assistant with access to the user's long-term memory.")
+            f.write("You are {system_name}, the system helper for this household's AI app.")
 
     # 2. Spin up File-System Watcher as an isolated background task
     try:
@@ -138,7 +140,7 @@ if __name__ == "__main__":
     except RuntimeError as e:
         if "already accessed" not in str(e):
             raise
-        print("[ERROR]: Nuero AI is already running in another terminal (the memory vault is locked).")
+        print(f"[ERROR]: {profile.system_name()} is already running in another terminal (the memory vault is locked).")
         print("         Type 'exit' in that window, or close it, then start again.")
         raise SystemExit(1)
 

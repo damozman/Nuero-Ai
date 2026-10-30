@@ -1,4 +1,4 @@
-"""Profile pictures for bots and the main Nuero AI ("main"), kept in storage/avatars and served at /avatars."""
+"""Profile pictures for bots and the system helper ("main"), kept in storage/avatars and served at /avatars."""
 import base64
 import json
 import os

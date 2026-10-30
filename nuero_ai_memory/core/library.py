@@ -46,19 +46,27 @@ class Library:
         self._ensure_guide()
 
     def _ensure_guide(self):
-        """Keeps the built-in guide book present and up to date (it holds no personal data)."""
+        """Keeps the built-in guide book present, up to date and using the system's current name
+        (it holds no personal data). Called again after the system is renamed."""
         from core.guide import GUIDE_PAGES, GUIDE_TITLE, GUIDE_VERSION
+        from core import profile
+        name = profile.system_name()
         guide = next((b for b in self.books if b["kind"] == "guide"), None)
-        if guide and guide.get("version") == GUIDE_VERSION:
+        if guide and guide.get("version") == GUIDE_VERSION and guide.get("system_name") == name:
             return
         if not guide:
             guide = {"id": "guide", "title": GUIDE_TITLE, "emoji": "📘", "color": "#0369a1", "kind": "guide",
                      "bot": None, "created": _now()}
             self.books.insert(0, guide)
-        guide.update(version=GUIDE_VERSION, updated=_now(), items=[
-            {"id": f"guide-{n}", "title": title, "text": text, "source": "", "origin": "Built-in guide",
+        # A title the user chose keeps its wording; only the system's name inside it changes
+        old_name = guide.get("system_name")
+        title = guide["title"].replace(old_name, name) if old_name else guide["title"]
+        guide.update(title=profile.with_system_name(title, name), version=GUIDE_VERSION, system_name=name,
+                     updated=_now(), items=[
+            {"id": f"guide-{n}", "title": profile.with_system_name(title_, name),
+             "text": profile.with_system_name(text, name), "source": "", "origin": "Built-in guide",
              "bot": None, "image": None, "music": None, "added": _now()}
-            for n, (title, text) in enumerate(GUIDE_PAGES)
+            for n, (title_, text) in enumerate(GUIDE_PAGES)
         ])
         try:
             self._save()
@@ -179,6 +187,11 @@ class Library:
         book = next((b for b in self.books if b["kind"] == "archive" and b["bot"] == bot_id), None)
         return book or self.create_book(f"{bot_name}'s Archive", "🗄", color, kind="archive", bot=bot_id)
 
+    def refresh_guide(self):
+        """After the system is renamed: rewrite the guide with the new name."""
+        with self.lock:
+            self._ensure_guide()
+
     def recently_added(self, bot_id, kind, seconds):
         """Did this Family Node add to its archive/playlist (kind) within the last `seconds`?"""
         book = next((b for b in self.books if b["kind"] == kind and b["bot"] == bot_id), None)
@@ -222,7 +235,7 @@ class Library:
         for book in filter(None, (self.get(b) for b in book_ids or [])):
             lines = [f"### Book: {book['title']}"]
             if book["kind"] == "guide":
-                lines.append("(How the Nuero AI app itself works. Answer questions about the app only from this guide: "
+                lines.append("(How this app itself works. Answer questions about the app only from this guide: "
                              "don't invent buttons, icons or steps it doesn't describe. If something isn't covered, "
                              "say you're not sure.)")
             # The guide reads best in order; other books newest first

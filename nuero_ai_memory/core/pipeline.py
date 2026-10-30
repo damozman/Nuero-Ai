@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from core.bots import get_bots, SHARED
 from core.images import get_studio, IMAGE_MARKER, AUTO_IMAGE_NOTE
 from core.library import get_library, ARCHIVE_MARKER, ARCHIVE_NOTE
-from core import music
+from core import music, profile
 from core.music import SONG_MARKER, SONG_NOTE, SONG_REQUEST_NOTE, MUSIC_REQUEST, MAX_SONGS
 from core.providers import PROVIDERS, ProviderError
 from core.scrubber import MemoryScrubber
@@ -19,7 +19,6 @@ SETTINGS_PATH = "config/ai_settings.json"  # chosen AI and the last model used w
 COUNCIL_PARALLEL = int(os.environ.get("NUERO_COUNCIL_PARALLEL", "12"))
 HISTORY_TURNS = 10  # recent messages of the same conversation sent along for context
 HISTORY_CHARS = 2000  # per message, so one long reply can't crowd out the rest
-PROFILE_PATH = "config/profile.json"  # the human's name, so Family Nodes know who they're talking to
 SONG_COOLDOWN = float(os.environ.get("NUERO_SONG_COOLDOWN_HOURS", "3")) * 3600  # unasked songs: once per window
 ARCHIVE_COOLDOWN = float(os.environ.get("NUERO_ARCHIVE_COOLDOWN_HOURS", "1")) * 3600
 COUNCIL_TURNS = 14  # recent lines of the council conversation every member sees
@@ -135,8 +134,8 @@ class MemoryPipeline:
         path = "config/identity_frequency.txt"
         if os.path.exists(path):
             with open(path, "r", encoding="utf-8") as f:
-                return f.read()
-        return "You are an advanced, personal, responsive AI core assistant."
+                return profile.with_system_name(f.read())
+        return profile.with_system_name("You are {system_name}, the system helper for this household's AI app.")
 
     def chat(self, user_input: str, bot_id=None, history=None) -> str:
         return self.respond(user_input, bot_id, history=history)["reply"]
@@ -145,23 +144,16 @@ class MemoryPipeline:
 
     @property
     def user_name(self):
-        try:
-            with open(PROFILE_PATH, "r", encoding="utf-8") as f:
-                return json.load(f).get("user_name", "").strip()
-        except (OSError, ValueError):
-            return ""
+        return profile.user_name()
 
     def set_user_name(self, name):
-        tmp = PROFILE_PATH + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump({"user_name": (name or "").strip()[:60]}, f, indent=2)
-        os.replace(tmp, PROFILE_PATH)
+        profile.save(user_name=name or "")
 
     def _node_identity(self, bot):
         """Stated plainly up front: small models otherwise mix up who they are and who they're talking to."""
         user = self.user_name or "the user"
         return (f"Your name is {bot['name']}. You are one of the Family Nodes: the AI personalities who live in "
-                f"this household's Nuero AI app. Always speak as yourself, {bot['name']}, in the first person "
+                f"this household's {profile.system_name()} app. Always speak as yourself, {bot['name']}, in the first person "
                 f"(\"I\", never \"{bot['name']} thinks\"). You are talking with {user}, a human - not another "
                 f"Family Node.")
 
@@ -198,7 +190,7 @@ class MemoryPipeline:
 
     def respond(self, user_input: str, bot_id=None, council=False, history=None, books=None, skill=None,
                 council_context=None, memory_query=None, others=None, avoid_songs=None) -> dict:
-        """One reply. bot_id=None is the main Nuero AI (shared memories); a bot searches its own + shared.
+        """One reply. bot_id=None is the system helper (shared memories); a bot searches its own + shared.
         history: earlier turns of this same conversation, [{"role": "user"|"assistant", "text": ...}].
         books: library book ids attached to this conversation; the AI reads them in full.
         skill: id of one of the bot's skills to use for this reply.
@@ -214,7 +206,7 @@ class MemoryPipeline:
             name = bot["name"]
             partitions = [bot_id, SHARED]
         else:
-            identity, name, partitions = self._get_identity_frequency(), "Nuero AI", [SHARED]
+            identity, name, partitions = self._get_identity_frequency(), profile.system_name(), [SHARED]
             if self.user_name:
                 identity = f"{identity}\n\nYou are talking with {self.user_name}."
         active_skill = self.bots.skill(bot_id, skill) if bot_id and skill else None
@@ -224,7 +216,7 @@ class MemoryPipeline:
         if council_context:
             identity = f"{identity}\n\n{council_context}"
         # Family Nodes may create images on their own, except in Council (one question could trigger a dozen)
-        # and on the local AI, where the point is that nothing leaves the computer. The main Nuero AI is the
+        # and on the local AI, where the point is that nothing leaves the computer. The main system helper is the
         # system helper, so images, archiving and songs are left to the Family Nodes.
         studio = get_studio()
         may_draw = bool(bot_id) and not council and self.provider_id != "ollama" and studio.can_auto() \
@@ -368,7 +360,7 @@ class MemoryPipeline:
         """An image the user asked for, saved to the memory of whoever they're talking to."""
         if bot_id and not self.bots.get(bot_id):
             raise ProviderError(f"No Family Node called '{bot_id}'.")
-        name = self.bots.get(bot_id)["name"] if bot_id else "Nuero AI"
+        name = self.bots.get(bot_id)["name"] if bot_id else profile.system_name()
         return self._make_image(self.scrubber.mask(prompt), bot_id, name, requested=True)
 
     def _council_context(self, me, members, lines):

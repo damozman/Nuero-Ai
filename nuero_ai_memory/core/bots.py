@@ -6,7 +6,7 @@ import re
 import threading
 
 BOTS_PATH = "config/bots.json"
-SHARED = "shared"  # memory partition every bot (and the main Nuero AI) can search
+SHARED = "shared"  # memory partition every bot (and the system helper) can search
 
 # Distinct from the graph's own colors (blue/green/pink files, gold highlight)
 BOT_COLORS = ["#f97316", "#a3e635", "#22d3ee", "#818cf8", "#c084fc", "#fb7185",

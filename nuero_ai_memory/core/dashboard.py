@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from core.bots import get_bots, find_persona_text, SHARED
 from core.images import get_studio, IMAGES_DIR
 from core.library import get_library
-from core import avatars
+from core import avatars, profile
 from core.pipeline import get_pipeline
 from core.providers import ProviderError
 from core.vector_engine import get_vault
@@ -28,7 +28,7 @@ class TextIn(BaseModel):
 
 class BotTextIn(BaseModel):
     text: str
-    bot: str | None = None  # None = main Nuero AI / shared memory
+    bot: str | None = None  # None = the system helper / shared memory
 
 
 class ChatIn(BotTextIn):
@@ -63,18 +63,26 @@ def _check_bot(bot_id):
 # ---------------------------------------------------------------- AI service
 
 class ProfileIn(BaseModel):
-    user_name: str = ""
+    user_name: str | None = None
+    system_name: str | None = None  # what the whole system is called (header, helper, guide)
+
+
+def _profile():
+    return {"user_name": profile.user_name(), "system_name": profile.system_name()}
 
 
 @app.get("/api/profile")
 def get_profile():
-    return {"user_name": get_pipeline().user_name}
+    return _profile()
 
 
 @app.post("/api/profile")
 def post_profile(body: ProfileIn):
-    get_pipeline().set_user_name(body.user_name)
-    return {"user_name": get_pipeline().user_name}
+    renamed = body.system_name is not None and body.system_name.strip() != profile.system_name()
+    profile.save(user_name=body.user_name, system_name=body.system_name)
+    if renamed:
+        get_library().refresh_guide()
+    return _profile()
 
 
 @app.get("/api/ai")
@@ -250,7 +258,7 @@ def search_all_memories(q: str = "", limit: int = 20):
 
 @app.post("/api/image")
 def post_image(body: BotTextIn):
-    """An image the user asked for, in the conversation with body.bot (None = Nuero AI)."""
+    """An image the user asked for, in the conversation with body.bot (None = the system helper)."""
     if not body.text.strip():
         return _error("Describe the image you want.")
     try:
@@ -422,7 +430,7 @@ def delete_skill(body: SkillIn):
 # ---------------------------------------------------------------- avatars
 
 class AvatarIn(BaseModel):
-    id: str  # a Family Node id, "main" for Nuero AI, or "council"
+    id: str  # a Family Node id, "main" for the system helper, or "council"
     data: str | None = None  # uploaded picture as a data: URL
     prompt: str | None = None  # for a generated one
 
@@ -451,7 +459,7 @@ def generate_avatar(body: AvatarIn):
             default = ("An emblem for 'the Council': a circle of distinct AI companions gathered together as one "
                        "family. Symbolic, warm, centered, simple background, square composition.")
         else:
-            name = bot["name"] if bot else "Nuero AI"
+            name = bot["name"] if bot else profile.system_name()
             about = (bot["personality"] if bot else "a friendly, futuristic personal AI assistant")[:400]
             default = (f"Portrait avatar for a character named {name}. Character: {about}. "
                        "Head and shoulders, centered, expressive, soft lighting, simple background, square composition.")
@@ -516,7 +524,14 @@ def remove_folder(body: FolderRemoveIn):
 def get_graph():
     """The original 3D memory graph, kept as its own page for later experiments."""
     with open("templates/graph.html", "r", encoding="utf-8") as f:
-        return f.read()
+        return _with_names(f.read())
+
+
+def _with_names(page):
+    """Fills the system's current name into a page: as text, and as a JavaScript string."""
+    name = profile.system_name()
+    return (page.replace("{{SYSTEM_NAME_JS}}", json.dumps(name).replace("<", "\\u003c"))
+                .replace("{{SYSTEM_NAME}}", html.escape(name)))
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -524,7 +539,7 @@ def get_dashboard():
     with open("templates/index.html", "r", encoding="utf-8") as f:
         page = f.read()
     # Help panel shows real locations on this machine
-    return (page
+    return (_with_names(page)
             .replace("{{VAULT_PATH}}", html.escape(os.path.abspath("storage/vault")))
             .replace("{{CONFIG_PATH}}", html.escape(os.path.abspath("config")))
             .replace("{{IMAGES_PATH}}", html.escape(os.path.abspath(IMAGES_DIR))))

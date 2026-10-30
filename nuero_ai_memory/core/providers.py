@@ -47,11 +47,11 @@ class Provider:
 
     @property
     def missing_hint(self):
-        return f"Set {self.key_env} and restart Nuero AI to use {self.label}."
+        return f"Set {self.key_env} and restart the app to use {self.label}."
 
     def _key(self) -> str:
         if not self.has_key():
-            raise ProviderError(f"No API key for {self.label}. Set {self.key_env} and restart Nuero AI.")
+            raise ProviderError(f"No API key for {self.label}. Set {self.key_env} and restart the app.")
         return os.environ[self.key_env].strip()
 
     def models(self) -> list:
@@ -428,7 +428,7 @@ class OllamaProvider(Provider):
         return "Start Ollama on this computer, then pick it again."
 
     def models(self):
-        # Always re-list, so models pulled while Nuero AI runs show up
+        # Always re-list, so models pulled while the app runs show up
         try:
             names = [m["name"] for m in httpx.get(f"{_ollama_host()}/api/tags", timeout=3).json().get("models", [])]
         except (httpx.HTTPError, ValueError):

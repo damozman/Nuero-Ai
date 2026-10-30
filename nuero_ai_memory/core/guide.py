@@ -2,7 +2,7 @@
 itself. {system_name} is filled in with the system's current name. Contains no personal data.
 Bump GUIDE_VERSION when the text changes."""
 
-GUIDE_VERSION = 7
+GUIDE_VERSION = 8
 GUIDE_TITLE = "{system_name} Guide"
 
 GUIDE_PAGES = [
@@ -27,7 +27,7 @@ GUIDE_PAGES = [
      "Council is a group conversation between the user and several Family Nodes (Members chooses who is in). "
      "Every member knows who else is present and sees the recent conversation. In '🗣 Conversation' mode they "
      "answer one after another, each seeing the replies before it, so they can respond to and ask each other "
-     "questions by name; whoever the user names goes first. '⚡ All at once' is faster but members answer "
+     "questions by name. When the user names members, only they answer; with 'everyone' or no names, all do. The mode chip at the top right switches to '⚡ All at once', faster but members answer "
      "independently. '↻ Let them talk' lets the Family Nodes keep talking among themselves without a new "
      "message. Each member still uses only its own private memories plus shared ones."),
     ("Memory",

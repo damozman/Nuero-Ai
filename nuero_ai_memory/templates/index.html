@@ -489,7 +489,7 @@
   <h3>🏛 Council</h3>
   <ul>
     <li>A group conversation: every member knows who else is there and sees the recent conversation.</li>
-    <li><b>🗣 Conversation</b> (default): they answer one after another, each seeing the replies before it, so they can respond to and ask each other questions. Name someone and they go first. <b>⚡ All at once</b> is faster, but they answer independently.</li>
+    <li><b>🗣 Conversation</b> (default): they answer one after another, each seeing the replies before it, so they can respond to and ask each other questions. Name someone ("Woody, what do you think?") and only they answer; say "everyone" or name no one and they all do. Click the <b>🗣 Conversation</b> chip at the top right to switch to <b>⚡ All at once</b>, which is faster, but they answer independently.</li>
     <li><b>↻ Let them talk</b> (by the message box): the Family Nodes keep talking among themselves without a new message from you.</li>
     <li><b>Members ▾</b> chooses who's in. Each Family Node answers from its own private memories plus shared ones.</li>
     <li>Set <b>Your name</b> in 👪 Family → System so they know who you are.</li>
@@ -1270,9 +1270,15 @@
     const transcript = councilTranscript(k);
     if (keepGoing) appendEntry(k, { type: 'system', text: '↻ You let the council keep talking' });
     else appendEntry(k, { type: 'user', text });
+    // Same rule as the server: naming members means only they answer, unless everyone is addressed
+    const lowered = text.toLowerCase();
+    const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const named = keepGoing ? [] : members.filter(b => new RegExp('\\b' + esc(b.name.toLowerCase()) + '\\b').test(lowered));
+    const everyone = /\b(everyone|everybody|all of you|you all|y'all|you guys|both of you|each of you|the council|you two|guys)\b/.test(lowered);
+    const answering = named.length && !everyone ? named : members;
     const entry = {
       type: 'council', uid: String(Date.now()), together: councilTogether,
-      members: members.map(b => ({ id: b.id, name: b.name, color: b.color })), results: {}
+      members: answering.map(b => ({ id: b.id, name: b.name, color: b.color })), results: {}
     };
     appendEntry(k, entry);
     setPending(k, true);

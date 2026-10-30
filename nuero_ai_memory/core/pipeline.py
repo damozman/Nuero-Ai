@@ -425,11 +425,21 @@ class MemoryPipeline:
         name = self.bots.get(bot_id)["name"] if bot_id else profile.system_name()
         return self._make_image(self.scrubber.mask(prompt), bot_id, name, requested=True)
 
-    def _council_context(self, me, members, lines):
-        """What one member is told: who else is in the room, and what has been said so far."""
+    def _council_context(self, me, members, lines, newcomers=()):
+        """What one member is told: who else is in the room, who just joined, and what has been said so far.
+        Ends with a plain reminder of who is speaking: small models otherwise slip into another member's voice."""
         user = self.user_name or "the user"
         others = "\n".join(f"- {b['name']}: {self._summary_of(b)}" for b in members if b["id"] != me["id"])
         convo = "\n".join(lines[-COUNCIL_TURNS:]) or "(nothing yet - this is the start)"
+        other_names = [b["name"] for b in members if b["id"] != me["id"]]
+        if me["name"] in newcomers:
+            joined = "You have just joined this council - this is your first time here.\n\n"
+        elif newcomers:
+            joined = (f"New here: {', '.join(newcomers)} just joined and hasn't spoken yet. You are not new - you "
+                      f"have been part of this council.\n\n")
+        else:
+            joined = ""
+        not_you = " or ".join(other_names + [user])
         return (
             f"[THE COUNCIL]\nYou are in a group conversation with {user} (a human) and other Family Nodes. "
             f"Everyone here sees everything that is said.\nThe other Family Nodes present:\n"
@@ -443,7 +453,11 @@ class MemoryPipeline:
             f"\"Name:\" lines), never answer on their behalf, and don't narrate. Don't repeat or paraphrase what "
             f"someone else already said - add your own angle, true to your own personality. Keep it conversational and "
             f"fairly short.\n\n"
-            f"[THE CONVERSATION SO FAR]\n{convo}"
+            f"{joined}"
+            f"[THE CONVERSATION SO FAR]\n{convo}\n\n"
+            f"[YOUR TURN]\nYou are {me['name']} - not {not_you}. When asked about yourself, answer about "
+            f"{me['name']} from your own personality, even if someone else answered the same question. Write only "
+            f"{me['name']}'s next message."
         )
 
     def council(self, user_input: str, bot_ids=None, books=None, transcript=None, together=True,
@@ -468,23 +482,35 @@ class MemoryPipeline:
         if keep_going:
             prompt = (f"({user} is listening and wants you Family Nodes to talk with each other now. Speak to "
                       f"another Family Node by name. If they asked you something, answer it properly first - share "
-                      f"your actual view or an example. Then react, and only if you like, ask one new question. "
+                      f"your actual view or an example. Then react. Bring something new: a concrete example, a story, "
+                      f"a different opinion or a respectful disagreement. Don't open with praise like 'your insights "
+                      f"are fascinating', and don't end with a question every time - only now and then. "
                       f"Don't address {user} this time.)")
             memory_query = " ".join(lines[-3:]) or "council conversation"
-        else:
+        present = list(members)
+        # Members who haven't spoken yet in a conversation that is already under way have just joined
+        spoken = {line.split(":", 1)[0] for line in lines}
+        newcomers = [b["name"] for b in present if b["name"] not in spoken] if spoken - {user} else []
+        if not keep_going:
             prompt, memory_query = user_input, None
             lines.append(f"{user}: {user_input}")
-            # Whoever is addressed by name goes first
+            # Speaking to someone by name means they answer - and only they, unless everyone is addressed
             lowered = user_input.lower()
-            members.sort(key=lambda b: lowered.find(b["name"].lower()) if b["name"].lower() in lowered else 10**6)
+            named = [b for b in members if re.search(rf"\b{re.escape(b['name'].lower())}\b", lowered)]
+            everyone = re.search(r"\b(everyone|everybody|all of you|you all|y'all|you guys|both of you|each of "
+                                 r"you|the council|you two|guys)\b", lowered)
+            if named and not everyone:
+                members = sorted(named, key=lambda b: lowered.find(b["name"].lower()))
+            else:
+                members.sort(key=lambda b: lowered.find(b["name"].lower()) if b in named else 10**6)
 
         shared_songs = []  # songs shared so far this round, so members don't echo each other's picks
 
         def ask(member, convo):
-            context = self.scrubber.mask(self._council_context(member, members, convo))
+            context = self.scrubber.mask(self._council_context(member, present, convo, newcomers))
             return self.respond(prompt, member["id"], True, None, books, council_context=context,
                                 memory_query=memory_query,
-                                others=[b["name"] for b in members if b["id"] != member["id"]],
+                                others=[b["name"] for b in present if b["id"] != member["id"]],
                                 avoid_songs=list(shared_songs))
 
         if together:

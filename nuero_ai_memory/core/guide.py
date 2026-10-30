@@ -1,7 +1,7 @@
 """The built-in 'Nuero AI Guide' book: how the app works, so any AI it's attached to can answer questions
 about Nuero AI itself. Contains no personal data. Bump GUIDE_VERSION when the text changes."""
 
-GUIDE_VERSION = 2
+GUIDE_VERSION = 3
 GUIDE_TITLE = "Nuero AI Guide"
 
 GUIDE_PAGES = [
@@ -11,10 +11,17 @@ GUIDE_PAGES = [
      "and private memory. There is also a Council mode, a Library, images, music and voice. Memories are stored "
      "on this computer. The app is started with start_nuero.bat (or '.\\start_nuero local' to use the local AI)."),
     ("Who can answer",
-     "The left sidebar lists the Family Nodes first, then Council (several Family Nodes answer the same message "
-     "at once, each from its own memory; Members chooses who is in). At the bottom, under System, is Nuero AI: "
-     "the system helper, for questions about how the app works. Each conversation is kept separately, and the AI "
-     "sees the last 10 messages of that conversation. Clear starts a conversation fresh."),
+     "The left sidebar lists the Family Nodes first, then Council, then - under System - Nuero AI, the system "
+     "helper for questions about how the app works. Each conversation is kept separately, and the AI sees the "
+     "last 10 messages of that conversation. Clear starts a conversation fresh. 'Your name' (Family panel, "
+     "System section) tells the Family Nodes who they are talking with."),
+    ("Council",
+     "Council is a group conversation between the user and several Family Nodes (Members chooses who is in). "
+     "Every member knows who else is present and sees the recent conversation. In '🗣 Conversation' mode they "
+     "answer one after another, each seeing the replies before it, so they can respond to and ask each other "
+     "questions by name; whoever the user names goes first. '⚡ All at once' is faster but members answer "
+     "independently. '↻ Let them talk' lets the Family Nodes keep talking among themselves without a new "
+     "message. Each member still uses only its own private memories plus shared ones."),
     ("Memory",
      "Before answering, the AI looks up the 3 memories most related to the message. Memories are either shared "
      "(every Family Node can use them) or private to one Family Node. Family Nodes never see each other's private "
@@ -57,7 +64,8 @@ GUIDE_PAGES = [
      "create images on their own when it fits, up to a daily limit set in the Family Nodes panel, never in "
      "Council. Images need a Gemini or Grok key (Claude cannot create images) and are saved in storage/images."),
     ("Music",
-     "Family Nodes can share songs they are feeling or recommend music. Each song appears as a card with "
+     "Family Nodes share a song only at a genuinely meaningful moment (then not again for a few hours), or "
+     "recommend music when asked; the same song is never added to a playlist twice. Each song appears as a card with "
      "artwork, the Family Node's reason, a 30-second preview and buttons to open it in Spotify, YouTube or Apple "
      "Music. Every shared song is collected in that Family Node's playlist on the Playlists shelf. Song details "
      "come from Apple's and Deezer's free public search; the AI cannot listen to audio itself."),

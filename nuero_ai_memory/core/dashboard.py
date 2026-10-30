@@ -62,6 +62,21 @@ def _check_bot(bot_id):
 
 # ---------------------------------------------------------------- AI service
 
+class ProfileIn(BaseModel):
+    user_name: str = ""
+
+
+@app.get("/api/profile")
+def get_profile():
+    return {"user_name": get_pipeline().user_name}
+
+
+@app.post("/api/profile")
+def post_profile(body: ProfileIn):
+    get_pipeline().set_user_name(body.user_name)
+    return {"user_name": get_pipeline().user_name}
+
+
 @app.get("/api/ai")
 def get_ai():
     return get_pipeline().ai_status()
@@ -90,15 +105,18 @@ def post_chat(body: ChatIn):
 
 
 class CouncilIn(BaseModel):
-    text: str
-    bots: list[str] | None = None  # None = every bot
+    text: str = ""
+    bots: list[str] | None = None  # None = every Family Node
     books: list[str] | None = None
+    transcript: list[dict] | None = None  # recent council conversation: [{"speaker", "text"}]
+    together: bool = True  # one after another, seeing each other's replies (False: all at once)
+    keep_going: bool = False  # no new message: the Family Nodes carry on among themselves
 
 
 @app.post("/api/council")
 def post_council(body: CouncilIn):
-    """Streams one JSON line per bot as each answers, so fast bots show up without waiting for slow ones."""
-    if not body.text.strip():
+    """Streams one JSON line per Family Node as each answers, so replies appear as they come."""
+    if not body.text.strip() and not body.keep_going:
         return _error("Message is empty.")
     pipeline = get_pipeline()
     if not (body.bots or pipeline.bots.bots):
@@ -106,7 +124,8 @@ def post_council(body: CouncilIn):
 
     def lines():
         try:
-            for result in pipeline.council(body.text, body.bots, body.books):
+            for result in pipeline.council(body.text, body.bots, body.books, body.transcript,
+                                           body.together, body.keep_going):
                 yield json.dumps(result) + "\n"
         except Exception as e:
             yield json.dumps({"error": str(e)}) + "\n"

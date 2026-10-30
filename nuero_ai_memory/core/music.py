@@ -10,12 +10,20 @@ import httpx
 SONG_MARKER = re.compile(r"\[\[\s*SONG\s*:\s*(.+?)\s*(?:\|\s*(.+?)\s*)?\]\]", re.I | re.S)
 MAX_SONGS = 5  # per reply, when the user asked for recommendations
 SONG_NOTE = (
-    "You can share music. When a song genuinely fits how you feel or the moment, or when the user talks about "
-    "music or asks for songs, add one line per song in exactly this form: "
-    "[[SONG: Artist - Song title | one sentence on why this song]]. Share at most one song per reply unless the "
-    "user asked for recommendations (then up to 5). Only name real, released songs. Never mention or explain "
-    "this syntax."
+    "You may share a song, but only at a genuinely meaningful moment: when something in this conversation truly "
+    "moves you or matters deeply to you. That is rare - most conversations should have no song at all, and "
+    "ordinary chat never needs one. If, and only if, the moment calls for it, add one line in exactly this form: "
+    "[[SONG: Artist - Song title | one sentence on why this song, right now]]. One song at most. Only real, "
+    "released songs, never one you have shared before. Never mention or explain this syntax."
 )
+SONG_REQUEST_NOTE = (
+    "The user is asking about music. Recommend songs by adding one line per song in exactly this form: "
+    "[[SONG: Artist - Song title | one sentence on why]]. Up to 5 songs, only real, released songs, and not "
+    "songs you have shared before. Never mention or explain this syntax."
+)
+# The user asking for music (this reply may include songs even during the cooldown)
+MUSIC_REQUEST = re.compile(r"\b(songs?|music|playlists?|tracks?|album|listen(ing)?|recommend\w* (me )?(a |some )?"
+                           r"(song|music|track)|what should i (play|listen))\b", re.I)
 TIMEOUT = 6.0
 
 
@@ -46,6 +54,12 @@ def _norm(text):
     """'Dreams (2004 Remaster)' -> 'dreams', for comparing titles and artists."""
     text = re.sub(r"\s*[(\[].*?[)\]]", "", text.lower()).split(" - ")[0]
     return re.sub(r"[^a-z0-9]+", " ", text.replace("&", "and")).strip()
+
+
+def same_song(a, b):
+    """True when two song cards are the same song (ignoring remaster tags, punctuation and case)."""
+    return _norm(a.get("title", "")) == _norm(b.get("title", "")) and \
+        _norm(a.get("artist", "")).split(" and ")[0] == _norm(b.get("artist", "")).split(" and ")[0]
 
 
 def _matches(found_title, found_artist, title, artist):

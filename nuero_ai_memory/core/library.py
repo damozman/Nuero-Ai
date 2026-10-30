@@ -17,10 +17,10 @@ BOOK_COLORS = ["#7c3aed", "#0891b2", "#b45309", "#be123c", "#15803d", "#1d4ed8",
 # Bots add this line when something feels worth keeping
 ARCHIVE_MARKER = re.compile(r"\[\[\s*ARCHIVE\s*:\s*(.+?)\s*\|\s*(.+?)\s*\]\]", re.I | re.S)
 ARCHIVE_NOTE = (
-    "You have a personal archive. If something in this conversation feels genuinely important to you and "
-    "worth keeping long-term, you may archive it by ending your reply with one line in exactly this form: "
-    "[[ARCHIVE: short title | what you want to keep, written out in full]]. Use it sparingly, at most once per "
-    "reply, and never mention or explain this syntax."
+    "You have a personal archive for things that truly matter to you. Only if something in this conversation is "
+    "genuinely significant to you and worth keeping for the long term - rare; most conversations hold nothing "
+    "for the archive - end your reply with one line in exactly this form: "
+    "[[ARCHIVE: short title | what you want to keep, written out in full]]. Never mention or explain this syntax."
 )
 
 
@@ -36,6 +36,13 @@ class Library:
                 self.books = json.load(f).get("books", [])
         except (OSError, ValueError):
             self.books = []
+        removed = self._dedupe_playlists()
+        if removed:
+            print(f"[LIBRARY]: Removed {removed} repeated song(s) from playlists")
+            try:
+                self._save()
+            except OSError:
+                pass
         self._ensure_guide()
 
     def _ensure_guide(self):
@@ -171,6 +178,38 @@ class Library:
         """The bot's own archive book, created the first time it archives something."""
         book = next((b for b in self.books if b["kind"] == "archive" and b["bot"] == bot_id), None)
         return book or self.create_book(f"{bot_name}'s Archive", "🗄", color, kind="archive", bot=bot_id)
+
+    def recently_added(self, bot_id, kind, seconds):
+        """Did this Family Node add to its archive/playlist (kind) within the last `seconds`?"""
+        book = next((b for b in self.books if b["kind"] == kind and b["bot"] == bot_id), None)
+        if not book or not book["items"]:
+            return False
+        try:
+            last = datetime.datetime.fromisoformat(book["items"][-1]["added"])
+        except (KeyError, ValueError):
+            return False
+        return (datetime.datetime.now() - last).total_seconds() < seconds
+
+    def has_song(self, book_id, card):
+        from core.music import same_song
+        book = self.get(book_id)
+        return bool(book) and any(i.get("music") and same_song(i["music"], card) for i in book["items"])
+
+    def _dedupe_playlists(self):
+        """Keeps one copy of each song per playlist (the first time it was shared). Returns copies removed."""
+        from core.music import same_song
+        removed = 0
+        for book in self.books:
+            if book["kind"] != "playlist":
+                continue
+            kept = []
+            for item in book["items"]:
+                if item.get("music") and any(k.get("music") and same_song(k["music"], item["music"]) for k in kept):
+                    removed += 1
+                    continue
+                kept.append(item)
+            book["items"] = kept
+        return removed
 
     def playlist_for(self, bot_id, bot_name, color=None):
         """The bot's playlist book, where every song it shares is collected."""

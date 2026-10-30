@@ -209,6 +209,8 @@
     .nav-item.lib .avatar { background: linear-gradient(135deg, #7c3aed, #b45309); color: #fff; }
     .council { align-self: stretch; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
     .council .msg.ai { max-width: none; }
+    .council.together { grid-template-columns: 1fr; max-width: 82%; }
+    #continue-btn { padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(124, 58, 237, 0.5); background: rgba(124, 58, 237, 0.18); font-size: 0.85rem; }
     .council .pending { color: var(--muted); font-size: 0.85rem; }
     .typing { align-self: flex-start; display: flex; gap: 4px; padding: 12px 14px; background: var(--panel-2); border-radius: 4px 16px 16px 16px; }
     .typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: blink 1.2s infinite; }
@@ -263,6 +265,19 @@
     .panel-msg { font-size: 0.8rem; min-height: 1em; margin: 6px 0; }
     .bot-card { background: rgba(255, 255, 255, 0.035); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px; padding: 12px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; }
     .bot-card-head { display: flex; gap: 10px; align-items: center; }
+    .node-card { padding: 0; gap: 0; }
+    .node-card > summary { list-style: none; display: flex; align-items: center; gap: 12px; padding: 10px 12px; cursor: pointer; border-radius: 12px; }
+    .node-card > summary::-webkit-details-marker { display: none; }
+    .node-card > summary:hover { background: rgba(255, 255, 255, 0.04); }
+    .node-card[open] > summary { border-bottom: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px 12px 0 0; }
+    .node-sum { min-width: 0; flex: 1; }
+    .node-sum-name { font-weight: 700; font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .node-sum-sub { font-size: 0.74rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .node-chevron { color: var(--muted); font-size: 1.25rem; line-height: 1; padding: 0 4px; transition: transform 0.15s ease; }
+    .node-card[open] .node-chevron { transform: rotate(90deg); }
+    .node-body { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+    .cards-actions { display: flex; justify-content: flex-end; gap: 12px; margin: -4px 0 8px; font-size: 0.75rem; }
+    .cards-actions button { background: none; border: none; color: var(--accent); padding: 0; }
     .bot-card-head .field { flex: 1; font-weight: 600; }
     .bot-folders { font-size: 0.75rem; color: #93c5fd; word-break: break-all; }
     .bot-folders.none { color: var(--muted); font-style: italic; }
@@ -326,6 +341,7 @@
       <div class="head-actions">
         <select id="skill-select" hidden title="Which of this Family Node's skills to use" aria-label="Skill"></select>
         <button type="button" id="books-chip" class="chip on" hidden title="Books attached to this conversation"></button>
+        <button type="button" id="mode-btn" class="chip" hidden></button>
         <button type="button" id="members-btn" class="chip" hidden>Members ▾</button>
         <button type="button" id="voice-btn" class="chip" title="Read replies aloud">🔇 <span>Voice off</span></button>
         <button type="button" id="clear-btn" class="chip" title="Clear this conversation's history">🗑 <span>Clear</span></button>
@@ -341,6 +357,7 @@
           <button type="button" id="image-btn" title="Create an image from what you typed (or type /image …)">🎨</button>
           <button type="button" id="books-btn" title="Attach library books to this conversation">📚</button>
           <span id="save-hint"></span>
+          <button type="button" id="continue-btn" hidden title="Let the Family Nodes keep talking among themselves, without a new message from you">↻ Let them talk</button>
           <button type="button" id="save-btn" title="Store this text as a memory without asking the AI">Save as memory</button>
           <button type="submit" id="send-btn">Send</button>
         </div>
@@ -390,6 +407,15 @@
   <div id="bot-list"><p class="sub">Loading…</p></div>
 
   <h3>⚙️ System</h3>
+  <div class="bot-card">
+    <div style="font-weight:700">Your name</div>
+    <p class="sub" style="margin:0">What your Family Nodes call you. They're told they're talking with you, a human — so they don't mix you up with each other.</p>
+    <div class="path-box" style="margin:0">
+      <input id="user-name" class="field" type="text" placeholder="e.g. Chris">
+      <button type="button" class="btn" id="user-name-save">Save</button>
+    </div>
+    <p id="user-name-msg" class="panel-msg" style="margin:0"></p>
+  </div>
   <div id="main-card"></div>
 
   <h3>🎨 Images</h3>
@@ -466,8 +492,11 @@
 
   <h3>🏛 Council</h3>
   <ul>
-    <li>Your message goes to several Family Nodes at once; each answer fills in as that Family Node finishes.</li>
+    <li>A group conversation: every member knows who else is there and sees the recent conversation.</li>
+    <li><b>🗣 Conversation</b> (default): they answer one after another, each seeing the replies before it, so they can respond to and ask each other questions. Name someone and they go first. <b>⚡ All at once</b> is faster, but they answer independently.</li>
+    <li><b>↻ Let them talk</b> (by the message box): the Family Nodes keep talking among themselves without a new message from you.</li>
     <li><b>Members ▾</b> chooses who's in. Each Family Node answers from its own private memories plus shared ones.</li>
+    <li>Set <b>Your name</b> in 👪 Family → System so they know who you are.</li>
     <li>One AI request per Family Node — if the service starts refusing (rate limit), pick fewer members.</li>
   </ul>
 
@@ -699,6 +728,8 @@
     else sub = 'System helper · ask how anything in Nuero AI works';
     $('head-sub').textContent = sub + ' · ' + aiLabel();
     $('members-btn').hidden = !w.council;
+    $('mode-btn').hidden = !w.council;
+    $('continue-btn').hidden = !w.council || !threadOf(COUNCIL).some(e => e.type === 'council');
     if (!w.council) $('members').hidden = true;
     $('save-hint').textContent = w.bot ? `Save as memory → ${w.name}'s private memory` : 'Save as memory → shared memory';
     const books = attachedFor(target);
@@ -987,16 +1018,22 @@
 
   function councilGrid(e, t) {
     const grid = document.createElement('div');
-    grid.className = 'council';
+    // In a conversation round, replies stack in the order they were spoken so it reads like an exchange
+    grid.className = 'council' + (e.together ? ' together' : '');
     grid.dataset.uid = e.uid;
-    for (const member of e.members) {
+    const answered = Object.keys(e.results);
+    const ordered = [...answered.map(id => e.members.find(m => m.id === id)).filter(Boolean),
+                     ...e.members.filter(m => !answered.includes(m.id))];
+    let waiting = 0;
+    for (const member of ordered) {
       const result = e.results[member.id];
       if (!result) {
         const card = document.createElement('div');
         card.className = 'msg ai';
         card.style.setProperty('--c', member.color);
+        const status = e.done ? 'No answer.' : (e.together && waiting++ > 0 ? 'Waiting for their turn…' : 'Thinking…');
         card.innerHTML = '<div class="msg-head"><span class="avatar mini"></span><span></span></div><div class="pending">' +
-          (e.done ? 'No answer.' : 'Thinking…') + '</div>';
+          status + '</div>';
         setAvatar(card.querySelector('.avatar'), botById(member.id) ? who(member.id) : { color: member.color, initial: member.name[0] });
         card.querySelector('.msg-head span:last-child').textContent = member.name;
         grid.appendChild(card);
@@ -1039,7 +1076,8 @@
   }
 
   function updateComposer() {
-    $('send-btn').disabled = $('save-btn').disabled = !!pending[target];
+    $('send-btn').disabled = $('save-btn').disabled = $('continue-btn').disabled = !!pending[target];
+    if (target === COUNCIL) $('continue-btn').hidden = !threadOf(COUNCIL).some(e => e.type === 'council');
   }
 
   // History sent with a message: the last turns of this conversation
@@ -1110,15 +1148,43 @@
     sendImage(target, prompt);
   });
 
-  async function sendCouncil(text) {
+  // The council's conversation so far, so every member can see who said what
+  function councilTranscript() {
+    const out = [];
+    for (const e of threadOf(COUNCIL)) {
+      if (e.type === 'user' && !e.image) out.push({ speaker: 'user', text: e.text });
+      if (e.type === 'council') {
+        for (const r of Object.values(e.results)) if (r.reply) out.push({ speaker: r.bot_name, text: r.reply });
+      }
+    }
+    return out.slice(-14);
+  }
+  let councilTogether = store.get('nuero-council-together', true);
+  function renderCouncilMode() {
+    $('mode-btn').textContent = councilTogether ? '🗣 Conversation' : '⚡ All at once';
+    $('mode-btn').title = councilTogether
+      ? 'Family Nodes answer one after another and see each other\'s replies. Click for all at once (faster).'
+      : 'Everyone answers at once, independently (faster). Click for a conversation where they see each other.';
+  }
+  $('mode-btn').addEventListener('click', () => {
+    councilTogether = !councilTogether;
+    store.set('nuero-council-together', councilTogether);
+    renderCouncilMode();
+  });
+  renderCouncilMode();
+  $('continue-btn').addEventListener('click', () => { if (!pending[COUNCIL]) sendCouncil('', true); });
+
+  async function sendCouncil(text, keepGoing = false) {
     const members = councilMembers();
     if (!members.length) {
       appendEntry(COUNCIL, { type: 'error', text: bots.length ? 'Pick at least one council member (Members ▾).' : 'Create some Family Nodes first (👪 Family Nodes).' });
       return;
     }
-    appendEntry(COUNCIL, { type: 'user', text });
+    const transcript = councilTranscript();
+    if (keepGoing) appendEntry(COUNCIL, { type: 'system', text: '↻ You let the council keep talking' });
+    else appendEntry(COUNCIL, { type: 'user', text });
     const entry = {
-      type: 'council', uid: String(Date.now()),
+      type: 'council', uid: String(Date.now()), together: councilTogether,
       members: members.map(b => ({ id: b.id, name: b.name, color: b.color })), results: {}
     };
     appendEntry(COUNCIL, entry);
@@ -1131,7 +1197,8 @@
     try {
       const res = await fetch('/api/council', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, bots: members.map(b => b.id), books: attachedFor(COUNCIL) })
+        body: JSON.stringify({ text, bots: members.map(b => b.id), books: attachedFor(COUNCIL), transcript,
+                               together: councilTogether, keep_going: keepGoing })
       });
       if (!res.ok) throw new Error((await res.json()).error || res.statusText);
       const reader = res.body.getReader();
@@ -1364,7 +1431,7 @@
   function openPanel(id, focusNew) {
     document.querySelectorAll('.side-panel').forEach(p => p.classList.toggle('open', p.id === id));
     if (id === 'memory-panel') loadFolders();
-    if (id === 'bots-panel') { renderBotList(); loadImageSettings(); if (focusNew) setTimeout(() => $('new-bot-folder').focus(), 260); }
+    if (id === 'bots-panel') { renderBotList(); loadImageSettings(); loadProfile(); if (focusNew) setTimeout(() => $('new-bot-folder').focus(), 260); }
   }
   function closePanels() { document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open')); }
   document.querySelectorAll('[data-panel]').forEach(b => b.addEventListener('click', () => openPanel(b.dataset.panel)));
@@ -1583,9 +1650,45 @@
     const list = $('bot-list');
     list.replaceChildren();
     if (!bots.length) { list.innerHTML = '<p class="sub">No Family Nodes yet.</p>'; return; }
+    if (bots.length > 1) {
+      const all = document.createElement('div');
+      all.className = 'cards-actions';
+      for (const [text, open] of [['Expand all', true], ['Collapse all', false]]) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = text;
+        b.addEventListener('click', () => {
+          bots.forEach(x => open ? openSections.add('card:' + x.id) : openSections.delete('card:' + x.id));
+          list.querySelectorAll('.node-card').forEach(c => { c.open = open; });
+        });
+        all.appendChild(b);
+      }
+      list.appendChild(all);
+    }
     for (const bot of bots) {
-      const card = document.createElement('div');
-      card.className = 'bot-card';
+      // Collapsible: a one-line summary until opened, so a dozen Family Nodes stay manageable
+      const card = document.createElement('details');
+      card.className = 'bot-card node-card';
+      card.open = openSections.has('card:' + bot.id);
+      card.addEventListener('toggle', () => card.open ? openSections.add('card:' + bot.id) : openSections.delete('card:' + bot.id));
+      const summary = document.createElement('summary');
+      const face = document.createElement('div');
+      face.className = 'avatar';
+      setAvatar(face, who(bot.id));
+      const info = document.createElement('div');
+      info.className = 'node-sum';
+      const skillCount = (bot.skills || []).length;
+      info.innerHTML = '<div class="node-sum-name"></div><div class="node-sum-sub"></div>';
+      info.firstChild.textContent = bot.name;
+      info.lastChild.textContent = [
+        bot.folders.length ? `${bot.folders.length} folder${bot.folders.length > 1 ? 's' : ''}` : 'no folder',
+        skillCount ? `${skillCount} skill${skillCount > 1 ? 's' : ''}` : '',
+        bot.personality ? '' : 'no personality yet',
+      ].filter(Boolean).join(' · ');
+      const chevron = document.createElement('span');
+      chevron.className = 'node-chevron';
+      chevron.textContent = '▸';
+      summary.append(face, info, chevron);
       const head = document.createElement('div');
       head.className = 'bot-card-head';
       const name = document.createElement('input');
@@ -1636,8 +1739,11 @@
           } catch (err) { say(msg, err.message, true); }
         })
       );
-      card.append(head, avatarRow(bot.id, who(bot.id), msg), folders, persona, draws, sings, actions,
+      const body = document.createElement('div');
+      body.className = 'node-body';
+      body.append(head, avatarRow(bot.id, who(bot.id), msg), folders, persona, draws, sings, actions,
                   voiceSection(bot.id, bot.name), skillsSection(bot, msg), msg);
+      card.append(summary, body);
       list.appendChild(card);
     }
   }
@@ -1651,7 +1757,10 @@
       $('new-bot-folder').value = $('new-bot-name').value = '';
       say($('bot-msg'), `Created ${bot.name}.` + (folder ? ' Learning its folder in the background.' : '') +
         (bot.personality ? ' Personality found in its folder.' : ' Write its personality below.'), false);
+      openSections.add('card:' + bot.id);  // show the new Family Node's card open, ready to fill in
       await loadBots();
+      const cards = $('bot-list').querySelectorAll('.node-card');
+      if (cards.length) cards[cards.length - 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err) {
       say($('bot-msg'), err.message, true);
     } finally {
@@ -2047,6 +2156,17 @@
   }
   $('books-btn').addEventListener('click', chooseAttached);
   $('books-chip').addEventListener('click', chooseAttached);
+
+  // ================================================================ your name
+  async function loadProfile() {
+    try { $('user-name').value = (await api('/api/profile')).user_name; } catch (e) { /* server starting */ }
+  }
+  $('user-name-save').addEventListener('click', async () => {
+    try {
+      const { user_name } = await api('/api/profile', { user_name: $('user-name').value });
+      say($('user-name-msg'), user_name ? `Saved — your Family Nodes will call you ${user_name}.` : 'Cleared.', false);
+    } catch (err) { say($('user-name-msg'), err.message, true); }
+  });
 
   // ================================================================ image settings
   function renderImageSettings(s) {

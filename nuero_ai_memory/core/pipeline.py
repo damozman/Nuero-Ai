@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+import re
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -8,7 +9,7 @@ from core.bots import get_bots, SHARED
 from core.images import get_studio, IMAGE_MARKER, AUTO_IMAGE_NOTE
 from core.library import get_library, ARCHIVE_MARKER, ARCHIVE_NOTE
 from core import music
-from core.music import SONG_MARKER, SONG_NOTE, MAX_SONGS
+from core.music import SONG_MARKER, SONG_NOTE, SONG_REQUEST_NOTE, MUSIC_REQUEST, MAX_SONGS
 from core.providers import PROVIDERS, ProviderError
 from core.scrubber import MemoryScrubber
 from core.vector_engine import get_vault
@@ -18,8 +19,11 @@ SETTINGS_PATH = "config/ai_settings.json"  # chosen AI and the last model used w
 COUNCIL_PARALLEL = int(os.environ.get("NUERO_COUNCIL_PARALLEL", "12"))
 HISTORY_TURNS = 10  # recent messages of the same conversation sent along for context
 HISTORY_CHARS = 2000  # per message, so one long reply can't crowd out the rest
-COUNCIL_NOTE = ("You are one member of a council of assistants answering the same message. "
-                "Give your own perspective, drawing on your own memories. Keep it focused.")
+PROFILE_PATH = "config/profile.json"  # the human's name, so Family Nodes know who they're talking to
+SONG_COOLDOWN = float(os.environ.get("NUERO_SONG_COOLDOWN_HOURS", "3")) * 3600  # unasked songs: once per window
+ARCHIVE_COOLDOWN = float(os.environ.get("NUERO_ARCHIVE_COOLDOWN_HOURS", "1")) * 3600
+COUNCIL_TURNS = 14  # recent lines of the council conversation every member sees
+COUNCIL_LINE_CHARS = 1200
 
 _pipeline = None
 _pipeline_lock = threading.Lock()
@@ -137,33 +141,70 @@ class MemoryPipeline:
     def chat(self, user_input: str, bot_id=None, history=None) -> str:
         return self.respond(user_input, bot_id, history=history)["reply"]
 
+    # ---- who is who ----
+
+    @property
+    def user_name(self):
+        try:
+            with open(PROFILE_PATH, "r", encoding="utf-8") as f:
+                return json.load(f).get("user_name", "").strip()
+        except (OSError, ValueError):
+            return ""
+
+    def set_user_name(self, name):
+        tmp = PROFILE_PATH + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump({"user_name": (name or "").strip()[:60]}, f, indent=2)
+        os.replace(tmp, PROFILE_PATH)
+
+    def _node_identity(self, bot):
+        """Stated plainly up front: small models otherwise mix up who they are and who they're talking to."""
+        user = self.user_name or "the user"
+        return (f"Your name is {bot['name']}. You are one of the Family Nodes: the AI personalities who live in "
+                f"this household's Nuero AI app. Always speak as yourself, {bot['name']}, in the first person "
+                f"(\"I\", never \"{bot['name']} thinks\"). You are talking with {user}, a human - not another "
+                f"Family Node.")
+
+    @staticmethod
+    def _summary_of(bot):
+        """One short line about a Family Node, from the start of its personality, for the council roster."""
+        text = re.sub(r"\s+", " ", bot.get("personality", "")).strip()
+        first = re.split(r"(?<=[.!?])\s", text, maxsplit=1)[0] if text else ""
+        return (first[:160] + "…") if len(first) > 160 else first or "(no personality written yet)"
+
     def _clean_history(self, history):
         """Last few turns of this conversation, trimmed and masked like everything else that leaves the machine."""
         turns = [t for t in history or [] if t.get("role") in ("user", "assistant") and str(t.get("text", "")).strip()]
         return [{"role": t["role"], "text": self.scrubber.mask(str(t["text"])[:HISTORY_CHARS])}
                 for t in turns[-HISTORY_TURNS:]]
 
-    def respond(self, user_input: str, bot_id=None, council=False, history=None, books=None, skill=None) -> dict:
+    def respond(self, user_input: str, bot_id=None, council=False, history=None, books=None, skill=None,
+                council_context=None, memory_query=None) -> dict:
         """One reply. bot_id=None is the main Nuero AI (shared memories); a bot searches its own + shared.
         history: earlier turns of this same conversation, [{"role": "user"|"assistant", "text": ...}].
         books: library book ids attached to this conversation; the AI reads them in full.
         skill: id of one of the bot's skills to use for this reply.
+        council_context: for Council, who else is in the room and the conversation so far.
+        memory_query: what to look memories up by, when it isn't user_input (a Council 'continue' round).
         Returns the reply, the memories it drew on, and who answered (for the dashboard)."""
         if bot_id:
             bot = self.bots.get(bot_id)
             if not bot:
                 raise ProviderError(f"No Family Node called '{bot_id}'.")
-            identity = bot["personality"] or f"You are {bot['name']}, a personal AI assistant."
+            identity = (f"{self._node_identity(bot)}\n\nYour personality:\n"
+                        f"{bot['personality'] or 'Warm, curious and helpful.'}")
             name = bot["name"]
             partitions = [bot_id, SHARED]
         else:
             identity, name, partitions = self._get_identity_frequency(), "Nuero AI", [SHARED]
+            if self.user_name:
+                identity = f"{identity}\n\nYou are talking with {self.user_name}."
         active_skill = self.bots.skill(bot_id, skill) if bot_id and skill else None
         if active_skill:
             identity = (f"{identity}\n\n[ACTIVE SKILL: {active_skill['name']}]\n"
                         f"Apply this skill in your reply, staying in character:\n{active_skill['instructions']}")
-        if council:
-            identity = f"{identity}\n\n{COUNCIL_NOTE}"
+        if council_context:
+            identity = f"{identity}\n\n{council_context}"
         # Family Nodes may create images on their own, except in Council (one question could trigger a dozen)
         # and on the local AI, where the point is that nothing leaves the computer. The main Nuero AI is the
         # system helper, so images, archiving and songs are left to the Family Nodes.
@@ -172,13 +213,19 @@ class MemoryPipeline:
             and bot.get("images", True)
         if may_draw:
             identity = f"{identity}\n\n{AUTO_IMAGE_NOTE}"
-        if bot_id:
+        # Archiving and songs are for meaningful moments: after one, the option is simply withheld for a while
+        # (small models otherwise use it on nearly every reply). Asking for music always brings songs back.
+        library = get_library()
+        may_archive = bool(bot_id) and not library.recently_added(bot_id, "archive", ARCHIVE_COOLDOWN)
+        if may_archive:
             identity = f"{identity}\n\n{ARCHIVE_NOTE}"
-        may_share_music = bool(bot_id) and bot.get("music", True)
+        asked_for_music = bool(MUSIC_REQUEST.search(user_input))
+        may_share_music = bool(bot_id) and bot.get("music", True) and (
+            asked_for_music or (not council and not library.recently_added(bot_id, "playlist", SONG_COOLDOWN)))
         if may_share_music:
-            identity = f"{identity}\n\n{SONG_NOTE}"
+            identity = f"{identity}\n\n{SONG_REQUEST_NOTE if asked_for_music else SONG_NOTE}"
 
-        memories = self.vault.search_memories(user_input, limit=3, partitions=partitions)
+        memories = self.vault.search_memories(memory_query or user_input, limit=3, partitions=partitions)
         raw_context = "\n---\n".join([m.payload["text"] for m in memories])
         masked_context = self.scrubber.mask(raw_context)
         masked_prompt = self.scrubber.mask(user_input)
@@ -187,8 +234,8 @@ class MemoryPipeline:
         system_instruction = f"""
         {identity_frequency}
 
-        [SECURE RETRIEVED MEMORY MATRIX]:
-        {masked_context}
+        Things you remember (background for you - use them naturally, and never quote or mention this list):
+        {masked_context or '(nothing relevant)'}
         """
         library_context = get_library().context_for(books)
         if library_context:
@@ -213,7 +260,7 @@ class MemoryPipeline:
 
         # Things the bot chose to keep go into its own archive book (and its memory)
         archived = []
-        for title, text in ARCHIVE_MARKER.findall(reply)[:1]:
+        for title, text in ARCHIVE_MARKER.findall(reply)[:1] if may_archive else []:
             archived.append(self._archive(bot_id, name, self.scrubber.unmask(title), self.scrubber.unmask(text)))
         reply = ARCHIVE_MARKER.sub("", reply).strip()
 
@@ -252,6 +299,10 @@ class MemoryPipeline:
         playlist = get_library().playlist_for(bot_id or "main", name, bot["color"] if bot else "#0096ff")
         shared = []
         for card, (_, why) in zip(cards, queries):
+            if get_library().has_song(playlist["id"], card):
+                continue  # never the same song twice in a playlist
+            if any(music.same_song(card, s) for s in shared):
+                continue
             get_library().add_item(playlist["id"], text=why, origin=f"Shared by {name}", bot=bot_id, music=card,
                                    by_node=True)
             self.vault.add_memory(
@@ -260,7 +311,8 @@ class MemoryPipeline:
                 metadata={"origin": "song", "bot_id": bot_id or SHARED},
             )
             shared.append({**card, "why": why, "by": name, "playlist": playlist["title"]})
-        print(f"\n[MUSIC]: {name} shared {', '.join(c['title'] for c in cards)}")
+        if shared:
+            print(f"\n[MUSIC]: {name} shared {', '.join(c['title'] for c in shared)}")
         return shared
 
     def _archive(self, bot_id, name, title, text):
@@ -296,18 +348,72 @@ class MemoryPipeline:
         name = self.bots.get(bot_id)["name"] if bot_id else "Nuero AI"
         return self._make_image(self.scrubber.mask(prompt), bot_id, name, requested=True)
 
-    def council(self, user_input: str, bot_ids=None, books=None):
-        """Asks several bots at once (each with its own + shared memories) and yields each
-        result as soon as it's ready: the reply dict, or {"bot", "bot_name", "error"}."""
-        bots = [self.bots.get(b) for b in bot_ids] if bot_ids else list(self.bots.bots)
-        bots = [b for b in bots if b]
-        if not bots:
+    def _council_context(self, me, members, lines):
+        """What one member is told: who else is in the room, and what has been said so far."""
+        user = self.user_name or "the user"
+        others = "\n".join(f"- {b['name']}: {self._summary_of(b)}" for b in members if b["id"] != me["id"])
+        convo = "\n".join(lines[-COUNCIL_TURNS:]) or "(nothing yet - this is the start)"
+        return (
+            f"[THE COUNCIL]\nYou are in a group conversation with {user} (a human) and other Family Nodes. "
+            f"Everyone here sees everything that is said.\nThe other Family Nodes present:\n"
+            f"{others or '- (no one else this time)'}\n\n"
+            f"How to take part: speak only as yourself, {me['name']}, in the first person. Respond to what "
+            f"{user} and the others actually said, and feel free to ask another Family Node a question by name - "
+            f"they will answer when it is their turn. Never write lines for anyone else, and don't narrate. "
+            f"Keep it conversational and fairly short.\n\n"
+            f"[THE CONVERSATION SO FAR]\n{convo}"
+        )
+
+    def council(self, user_input: str, bot_ids=None, books=None, transcript=None, together=True,
+                keep_going=False):
+        """A group conversation. Each member is told who else is present and sees the recent conversation
+        (transcript: [{"speaker", "text"}], oldest first; speaker "user" is the human).
+        together=True: members answer one after another, each seeing the replies before it this round, so they
+        can respond to and question each other. False: all at once, independently (faster).
+        keep_going=True: no new message from the user - the members carry on among themselves.
+        Yields each result as it's ready: the reply dict, or {"bot", "bot_name", "error"}."""
+        members = [self.bots.get(b) for b in bot_ids] if bot_ids else list(self.bots.bots)
+        members = [b for b in members if b]
+        if not members:
             raise ProviderError("No Family Nodes to ask. Add Family Nodes first, or pick at least one council member.")
-        with ThreadPoolExecutor(max_workers=max(1, min(COUNCIL_PARALLEL, len(bots)))) as pool:
-            futures = {pool.submit(self.respond, user_input, b["id"], True, None, books): b for b in bots}
+        user = self.user_name or "User"
+        lines = []
+        for turn in transcript or []:
+            text = str(turn.get("text", "")).strip()[:COUNCIL_LINE_CHARS]
+            if text:
+                speaker = user if turn.get("speaker") == "user" else str(turn.get("speaker", "?"))
+                lines.append(f"{speaker}: {text}")
+        if keep_going:
+            prompt = (f"({user} is listening and wants you Family Nodes to talk with each other now. Speak to "
+                      f"another Family Node by name: answer a question they asked you, react to what they said, or "
+                      f"ask them something you're curious about. Don't address {user} this time.)")
+            memory_query = " ".join(lines[-3:]) or "council conversation"
+        else:
+            prompt, memory_query = user_input, None
+            lines.append(f"{user}: {user_input}")
+            # Whoever is addressed by name goes first
+            lowered = user_input.lower()
+            members.sort(key=lambda b: lowered.find(b["name"].lower()) if b["name"].lower() in lowered else 10**6)
+
+        def ask(member, convo):
+            context = self.scrubber.mask(self._council_context(member, members, convo))
+            return self.respond(prompt, member["id"], True, None, books, council_context=context,
+                                memory_query=memory_query)
+
+        if together:
+            for member in members:
+                try:
+                    result = ask(member, lines)
+                    lines.append(f"{member['name']}: {result['reply'][:COUNCIL_LINE_CHARS]}")
+                    yield result
+                except Exception as e:
+                    yield {"bot": member["id"], "bot_name": member["name"], "error": str(e)}
+            return
+        with ThreadPoolExecutor(max_workers=max(1, min(COUNCIL_PARALLEL, len(members)))) as pool:
+            futures = {pool.submit(ask, m, list(lines)): m for m in members}
             for future in as_completed(futures):
-                bot = futures[future]
+                member = futures[future]
                 try:
                     yield future.result()
                 except Exception as e:
-                    yield {"bot": bot["id"], "bot_name": bot["name"], "error": str(e)}
+                    yield {"bot": member["id"], "bot_name": member["name"], "error": str(e)}

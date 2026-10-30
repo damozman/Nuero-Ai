@@ -34,6 +34,7 @@ def run_cli_chat():
     pipeline = get_pipeline()
     current_bot = None  # None = the main Nuero AI
     histories = {}  # bot id (or None) -> this session's turns, so each conversation has context
+    council_log = []  # the council's shared conversation this session: [{"speaker", "text"}]
     print("\n" + "="*50)
     print("  NUERO AI MEMORY PIPELINE OPERATIONAL")
     print(f"  Interactive Chat Mode Connected to {pipeline.describe()}")
@@ -86,11 +87,14 @@ def run_cli_chat():
                 if not question:
                     print("\n  Usage: /council <message>\n")
                     continue
-                for result in pipeline.council(question):
+                replies = []
+                for result in pipeline.council(question, transcript=council_log):
                     if "error" in result:
                         print(f"\n[{result['bot_name']}] (failed) {result['error']}")
                     else:
                         print(f"\n[{result['bot_name']}]: {result['reply']}")
+                        replies.append({"speaker": result["bot_name"], "text": result["reply"]})
+                council_log += [{"speaker": "user", "text": question}] + replies
                 print("-"*50 + "\n")
                 continue
 

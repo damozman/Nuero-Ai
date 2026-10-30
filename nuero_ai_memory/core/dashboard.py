@@ -35,6 +35,13 @@ class ChatIn(BotTextIn):
     history: list[dict] | None = None  # earlier turns of this conversation: [{"role", "text"}]
     books: list[str] | None = None  # library books attached to this conversation
     skill: str | None = None  # one of the bot's skills, for this reply
+    summary: str | None = None  # running summary of this conversation's older messages
+
+
+class SummarizeIn(BaseModel):
+    bot: str | None = None
+    previous: str = ""
+    messages: list[dict] = []
 
 
 class AiChoiceIn(BaseModel):
@@ -107,7 +114,16 @@ def post_chat(body: ChatIn):
         return _error("Message is empty.")
     try:
         return get_pipeline().respond(body.text, body.bot or None, history=body.history, books=body.books,
-                                      skill=body.skill)
+                                      skill=body.skill, summary=body.summary)
+    except Exception as e:
+        return _error(str(e), 500)
+
+
+@app.post("/api/summarize")
+def post_summarize(body: SummarizeIn):
+    """Folds older messages of a long conversation into its running summary (the page keeps the summary)."""
+    try:
+        return {"summary": get_pipeline().summarize(body.messages, body.previous, body.bot or None)}
     except Exception as e:
         return _error(str(e), 500)
 

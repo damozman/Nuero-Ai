@@ -2,7 +2,7 @@
 itself. {system_name} is filled in with the system's current name. Contains no personal data.
 Bump GUIDE_VERSION when the text changes."""
 
-GUIDE_VERSION = 5
+GUIDE_VERSION = 6
 GUIDE_TITLE = "{system_name} Guide"
 
 GUIDE_PAGES = [
@@ -13,9 +13,16 @@ GUIDE_PAGES = [
      "on this computer. The app is started with start_nuero.bat (or '.\\start_nuero local' to use the local AI)."),
     ("Who can answer",
      "The left sidebar lists the Family Nodes first, then Council, then - under System - {system_name}, the system "
-     "helper for questions about how the app works. Each conversation is kept separately, and the AI sees the "
-     "last 10 messages of that conversation. Clear starts a conversation fresh. 'Your name' (Family panel, "
-     "System section) tells the Family Nodes who they are talking with."),
+     "helper for questions about how the app works. 'Your name' (Family panel, System section) tells the Family "
+     "Nodes who they are talking with."),
+    ("Conversations",
+     "Each Family Node (and Council) can have several conversations - one per topic - switched with the 💬 button "
+     "at the top of the chat. Each keeps its own history, so topics don't blur together; new ones name themselves "
+     "from the first message and can be renamed. The AI reads the recent messages of the conversation directly "
+     "(about 60 with Gemini, Claude or Grok, 12 with the local AI), and older parts are kept as a running summary "
+     "that updates as the conversation grows, so long threads keep their continuity. Clear empties the General "
+     "conversation or deletes any other one. Conversations are stored in the browser; long-term memories are "
+     "separate and unaffected."),
     ("Council",
      "Council is a group conversation between the user and several Family Nodes (Members chooses who is in). "
      "Every member knows who else is present and sees the recent conversation. In '🗣 Conversation' mode they "

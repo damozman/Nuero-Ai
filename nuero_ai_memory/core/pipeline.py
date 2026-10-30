@@ -17,8 +17,14 @@ from core.vector_engine import get_vault
 SETTINGS_PATH = "config/ai_settings.json"  # chosen AI and the last model used with each
 # How many council members are asked at once; lower it if the AI service rate-limits you
 COUNCIL_PARALLEL = int(os.environ.get("NUERO_COUNCIL_PARALLEL", "12"))
-HISTORY_TURNS = 10  # recent messages of the same conversation sent along for context
-HISTORY_CHARS = 2000  # per message, so one long reply can't crowd out the rest
+# Recent messages of the same conversation sent with each reply. Cloud models read long conversations well;
+# the local model has a small window and slows down, so it gets less. Older messages live on in a running
+# summary (see summarize) - so long, deep threads keep their continuity.
+HISTORY_LIMITS = {
+    "cloud": {"turns": int(os.environ.get("NUERO_HISTORY_TURNS", "60")), "per_message": 8000, "total": 80000},
+    "local": {"turns": int(os.environ.get("NUERO_LOCAL_HISTORY_TURNS", "12")), "per_message": 2500, "total": 14000},
+}
+SUMMARY_CHARS = 6000  # the running summary of older parts of a conversation
 SONG_COOLDOWN = float(os.environ.get("NUERO_SONG_COOLDOWN_HOURS", "3")) * 3600  # unasked songs: once per window
 ARCHIVE_COOLDOWN = float(os.environ.get("NUERO_ARCHIVE_COOLDOWN_HOURS", "1")) * 3600
 COUNCIL_TURNS = 14  # recent lines of the council conversation every member sees
@@ -113,6 +119,7 @@ class MemoryPipeline:
     def ai_status(self):
         return {
             "current": {"provider": self.provider_id, "model": self.model},
+            "history_turns": self.history_limits()["turns"],  # recent messages sent raw; older ones get summarized
             "providers": [
                 {
                     "id": p.id,
@@ -165,11 +172,48 @@ class MemoryPipeline:
         first = re.split(r"(?<=[.!?])\s", text, maxsplit=1)[0] if text else ""
         return (first[:160] + "…") if len(first) > 160 else first or "(no personality written yet)"
 
+    def history_limits(self):
+        return HISTORY_LIMITS["local" if self.provider_id == "ollama" else "cloud"]
+
     def _clean_history(self, history):
-        """Last few turns of this conversation, trimmed and masked like everything else that leaves the machine."""
+        """The most recent turns of this conversation that fit the current AI's limits, newest kept first,
+        trimmed and masked like everything else that leaves the machine."""
+        limits = self.history_limits()
         turns = [t for t in history or [] if t.get("role") in ("user", "assistant") and str(t.get("text", "")).strip()]
-        return [{"role": t["role"], "text": self.scrubber.mask(str(t["text"])[:HISTORY_CHARS])}
-                for t in turns[-HISTORY_TURNS:]]
+        kept, total = [], 0
+        for t in reversed(turns[-limits["turns"]:]):
+            text = str(t["text"])[:limits["per_message"]]
+            if total + len(text) > limits["total"]:
+                break
+            kept.append({"role": t["role"], "text": self.scrubber.mask(text)})
+            total += len(text)
+        return list(reversed(kept))
+
+    def summarize(self, messages, previous="", bot_id=None):
+        """Folds older messages of a long conversation into its running summary, so a thread keeps its
+        continuity after those messages fall out of the recent window. Returns the new summary."""
+        bot = self.bots.get(bot_id) if bot_id else None
+        name = bot["name"] if bot else profile.system_name()
+        user = self.user_name or "the user"
+        lines = []
+        for t in messages or []:
+            text = str(t.get("text", "")).strip()
+            if text and t.get("role") in ("user", "assistant"):
+                lines.append(f"{user if t['role'] == 'user' else name}: {text[:4000]}")
+        if not lines:
+            return previous
+        system = (
+            f"You keep the running memory of one long, ongoing conversation between {user} and {name}. "
+            f"Update the summary so far with the new messages. Keep what matters for continuing the "
+            f"conversation naturally: topics and how they developed, what {user} shared about their life, "
+            f"feelings and moods, opinions, decisions, promises and plans, questions still open, running jokes "
+            f"and anything {name} said it would remember. Write it in the third person as compact notes, at most "
+            f"about 500 words. Drop small talk. Output only the updated summary."
+        )
+        prompt = (f"SUMMARY SO FAR:\n{self.scrubber.mask(previous) or '(none yet)'}\n\n"
+                  f"NEW MESSAGES:\n" + self.scrubber.mask("\n".join(lines)))
+        summary = self.provider.generate(self.model, prompt, system, None)
+        return self.scrubber.unmask(summary.strip())[:SUMMARY_CHARS]
 
     @staticmethod
     def _own_words(reply, me, others):
@@ -190,7 +234,7 @@ class MemoryPipeline:
         return trimmed or reply  # a reply that opens as someone else: show it rather than nothing
 
     def respond(self, user_input: str, bot_id=None, council=False, history=None, books=None, skill=None,
-                council_context=None, memory_query=None, others=None, avoid_songs=None) -> dict:
+                council_context=None, memory_query=None, others=None, avoid_songs=None, summary=None) -> dict:
         """One reply. bot_id=None is the system helper (shared memories); a bot searches its own + shared.
         history: earlier turns of this same conversation, [{"role": "user"|"assistant", "text": ...}].
         books: library book ids attached to this conversation; the AI reads them in full.
@@ -255,6 +299,12 @@ class MemoryPipeline:
         Things you remember (background for you - use them naturally, and never quote or mention this list):
         {masked_context or '(nothing relevant)'}
         """
+        if summary and summary.strip():
+            system_instruction += (
+                "\nEarlier in this same conversation (a summary of what came before the recent messages - "
+                "it's your shared history, so draw on it naturally):\n"
+                + self.scrubber.mask(summary.strip()[:SUMMARY_CHARS]) + "\n"
+            )
         library_context = get_library().context_for(books)
         if library_context:
             system_instruction += (

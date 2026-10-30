@@ -1,6 +1,6 @@
 {
   "provider": "ollama",
   "models": {
-    "ollama": "qwen2.5-7b-instruct-64k:latest"
+    "ollama": "qwen2.5:14b"
   }
 }

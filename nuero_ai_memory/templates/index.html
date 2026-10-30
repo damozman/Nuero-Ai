@@ -445,7 +445,7 @@
     <button type="button" class="btn" data-copy="vault-path">Copy</button>
   </div>
   <ul>
-    <li>Reads <code>.txt</code>, <code>.md</code>, <code>.log</code>, <code>.py</code> up to 5 MB, including subfolders. Word/PDF: save as .txt first.</li>
+    <li>Reads notes (<code>.txt</code>, <code>.md</code>, <code>.log</code>) and code (<code>.py</code>, <code>.js</code>, <code>.ts</code>, <code>.html</code>, <code>.css</code>, <code>.json</code>, <code>.java</code>, <code>.cs</code>, <code>.go</code>, …) up to 5 MB, including subfolders. Dependency, build and hidden folders (<code>node_modules</code>, <code>dist</code>, <code>.git</code>…) and lock files are skipped. Word/PDF: save as .txt first.</li>
     <li>New and edited files are learned within seconds; deleted files are forgotten.</li>
     <li><b>Save as memory</b> in the chat stores text directly — into the Family Node you're talking to, or shared.</li>
     <li>Under any reply, open <b>memories used</b> to see what it drew on, and <b>Forget</b> anything that shouldn't be there.</li>
@@ -1766,8 +1766,34 @@
       head.append(name);
       const folders = document.createElement('div');
       folders.className = 'bot-folders' + (bot.folders.length ? '' : ' none');
-      folders.textContent = bot.folders.length ? '📁 ' + bot.folders.join('\n📁 ') : 'No folder — add one in 🧠 Memory → Watched folders (choose this Family Node in the menu).';
+      folders.textContent = bot.folders.length ? '📁 ' + bot.folders.join('\n📁 ') : 'No folder yet — add one below.';
       folders.style.whiteSpace = 'pre-line';
+      // Connect another folder (notes, a code repository…) to this Family Node's private memory
+      const addFolder = document.createElement('div');
+      addFolder.className = 'path-box';
+      addFolder.style.margin = '0';
+      const folderPath = document.createElement('input');
+      folderPath.className = 'field';
+      folderPath.placeholder = 'Add a folder: paste its path (e.g. a code repository)';
+      const folderMsg = document.createElement('p');
+      folderMsg.className = 'panel-msg';
+      folderMsg.style.margin = '0';
+      const connect = mk('Add folder', '', async () => {
+        if (!folderPath.value.trim()) return say(folderMsg, 'Paste a folder path first.', true);
+        connect.disabled = true;
+        try {
+          const { added } = await api('/api/folders', { text: folderPath.value, bot: bot.id });
+          say(folderMsg, `Connected ${added}. ${bot.name} is reading it in the background — big folders take a few minutes.`, false);
+          setTimeout(loadBots, 1500);
+        } catch (err) { say(folderMsg, err.message, true); }
+        finally { connect.disabled = false; }
+      });
+      folderPath.addEventListener('keydown', e => { if (e.key === 'Enter') connect.click(); });
+      addFolder.append(folderPath, connect);
+      const folderHint = document.createElement('p');
+      folderHint.className = 'sub';
+      folderHint.style.margin = '0';
+      folderHint.textContent = 'Reads notes and code files (dependency, build and hidden folders like node_modules and .git are skipped). Disconnect a folder in 🧠 Memory → Watched folders.';
       const persona = document.createElement('textarea');
       persona.className = 'field';
       persona.value = bot.personality;
@@ -1809,7 +1835,7 @@
       );
       const body = document.createElement('div');
       body.className = 'node-body';
-      body.append(head, avatarRow(bot.id, who(bot.id), msg), folders, persona, draws, sings, actions,
+      body.append(head, avatarRow(bot.id, who(bot.id), msg), folders, addFolder, folderMsg, folderHint, persona, draws, sings, actions,
                   voiceSection(bot.id, bot.name), skillsSection(bot, msg), msg);
       card.append(summary, body);
       list.appendChild(card);

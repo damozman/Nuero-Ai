@@ -47,10 +47,15 @@ class VectorMemoryVault:
             )
 
     def add_memory(self, text: str, metadata: dict = None):
-        """metadata may carry "source" (stable file identity) and "bot_id" (owner; defaults to shared)."""
+        """metadata may carry "source" (stable file identity), "bot_id" (owner; defaults to shared) and
+        "label" (e.g. "shop-app/src/cart.ts"), which heads every chunk so a piece of a file still says where it
+        came from - for the AI reading it, and for searches that name a project or file."""
         metadata = dict(metadata or {})
         metadata.setdefault("bot_id", SHARED)
+        label = metadata.get("label")
         chunks = [text[i:i+800] for i in range(0, len(text), 600)]
+        if label:
+            chunks = [f"[{label}]\n{chunk}" for chunk in chunks]
         if not chunks:
             return
         vectors = self.encoder.encode(chunks)

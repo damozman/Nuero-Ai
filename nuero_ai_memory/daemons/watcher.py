@@ -6,9 +6,19 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from core.vector_engine import get_vault, SHARED
 
-MEMORY_EXTENSIONS = ('.txt', '.md', '.log', '.py')
+TEXT_EXTENSIONS = ('.txt', '.md', '.log')
+# Source code and config, so a Family Node can be given a code repository
+CODE_EXTENSIONS = ('.py', '.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.vue', '.svelte', '.html', '.css', '.scss',
+                   '.json', '.yml', '.yaml', '.toml', '.ini', '.sql', '.java', '.kt', '.cs', '.go', '.rs', '.php',
+                   '.rb', '.swift', '.c', '.h', '.cpp', '.hpp', '.sh', '.ps1', '.bat', '.r', '.dart', '.lua')
+MEMORY_EXTENSIONS = TEXT_EXTENSIONS + CODE_EXTENSIONS
 MAX_FILE_BYTES = 5 * 1024 * 1024
-SKIP_DIRS = {'node_modules', '__pycache__', 'venv', 'site-packages'}
+# Dependencies, build output and caches: not the user's own work, and often huge
+SKIP_DIRS = {'node_modules', '__pycache__', 'venv', 'env', 'site-packages', 'dist', 'build', 'out', 'target',
+             'bin', 'obj', 'coverage', 'vendor', 'bower_components'}
+# Generated files that would flood memory with noise
+SKIP_FILES = {'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'poetry.lock', 'cargo.lock', 'composer.lock',
+              'gemfile.lock'}
 
 VAULT_DIR = "storage/vault"
 FOLDERS_CONFIG = "config/watch_folders.json"
@@ -21,9 +31,14 @@ def get_daemon():
     return _daemon
 
 
-def _is_skipped(path):
-    parts = os.path.normpath(path).split(os.sep)
-    return any(p.startswith('.') or p in SKIP_DIRS for p in parts[:-1])
+def _is_skipped(path, root):
+    """Hidden, dependency and build folders - judged only *inside* the watched folder (root), so a repo kept
+    under e.g. C:\\dev\\build\\my-repo isn't skipped because of where it lives."""
+    rel = os.path.relpath(path, root) if root else os.path.basename(path)
+    parts = os.path.normpath(rel).split(os.sep)
+    name = parts[-1].lower()
+    return (name in SKIP_FILES or name.endswith('.min.js') or name.endswith('.min.css')
+            or any(p.startswith('.') or p.lower() in SKIP_DIRS for p in parts[:-1]))
 
 
 class MemoryFileHandler(FileSystemEventHandler):
@@ -85,6 +100,12 @@ class MemoryDaemon:
 
     def folders_of(self, bot_id):
         return [f for f in self.extra_folders if self.owners.get(f) == bot_id]
+
+    def root_for(self, path):
+        """The innermost watched folder containing path (or None)."""
+        norm = os.path.normcase(path)
+        roots = [f for f in self.folders() if norm.startswith(os.path.normcase(f).rstrip(os.sep) + os.sep)]
+        return max(roots, key=len) if roots else None
 
     @staticmethod
     def _load_json(path, default):
@@ -156,7 +177,7 @@ class MemoryDaemon:
     def _scan(self, folder):
         learned = 0
         for root, dirs, files in os.walk(folder):
-            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in SKIP_DIRS]
+            dirs[:] = [d for d in dirs if not d.startswith('.') and d.lower() not in SKIP_DIRS]
             for name in files:
                 if self.ingest(os.path.join(root, name), quiet=True):
                     learned += 1
@@ -252,7 +273,7 @@ class MemoryDaemon:
     def ingest(self, path, quiet=False):
         """Learns a file if it's new or changed since last time. Returns True if it was learned."""
         path = os.path.abspath(path)
-        if not path.lower().endswith(MEMORY_EXTENSIONS) or _is_skipped(path):
+        if not path.lower().endswith(MEMORY_EXTENSIONS) or _is_skipped(path, self.root_for(path)):
             return False
         try:
             stat = os.stat(path)
@@ -272,7 +293,11 @@ class MemoryDaemon:
         source = f"watcher:{path}"
         self.vault.remove_source(f"kept:{path}")  # folder re-added: replace kept copy instead of duplicating
         if content.strip():
-            self.vault.add_memory(content, metadata={"source": source, "bot_id": self.owner_for(path)})
+            # "project/folder/file" relative to the watched folder, so every piece says which project it's from
+            root = self.root_for(path)
+            label = (os.path.basename(root.rstrip(os.sep)) + "/" + os.path.relpath(path, root).replace(os.sep, "/")
+                     if root else os.path.basename(path))
+            self.vault.add_memory(content, metadata={"source": source, "bot_id": self.owner_for(path), "label": label})
         else:
             self.vault.remove_source(source)
         with self.lock:

@@ -2,7 +2,7 @@
 itself. {system_name} is filled in with the system's current name. Contains no personal data.
 Bump GUIDE_VERSION when the text changes."""
 
-GUIDE_VERSION = 4
+GUIDE_VERSION = 5
 GUIDE_TITLE = "{system_name} Guide"
 
 GUIDE_PAGES = [
@@ -28,7 +28,7 @@ GUIDE_PAGES = [
      "(every Family Node can use them) or private to one Family Node. Family Nodes never see each other's private "
      "memories, not even in Council. Ways to add memories: type text and click 'Save as memory' (saves to the "
      "Family Node you are talking to, or shared); drop .txt, .md, .log or .py files into the quick drop folder "
-     "(storage/vault, shared); or add watched folders in the Memory panel, choosing Shared or a Family Node. "
+     "(storage/vault, shared); or add watched folders in the Memory panel (Shared or a Family Node), or with 'Add folder' in a Family Node's card. Code repositories work too. "
      "Edited files are re-learned, deleted files forgotten. Under each reply, 'memories used' shows what was "
      "drawn on, with a Forget button."),
     ("Family Nodes",

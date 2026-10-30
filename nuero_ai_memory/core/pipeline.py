@@ -22,6 +22,7 @@ HISTORY_CHARS = 2000  # per message, so one long reply can't crowd out the rest
 SONG_COOLDOWN = float(os.environ.get("NUERO_SONG_COOLDOWN_HOURS", "3")) * 3600  # unasked songs: once per window
 ARCHIVE_COOLDOWN = float(os.environ.get("NUERO_ARCHIVE_COOLDOWN_HOURS", "1")) * 3600
 COUNCIL_TURNS = 14  # recent lines of the council conversation every member sees
+MIN_MEMORY_SCORE = float(os.environ.get("NUERO_MIN_MEMORY_SCORE", "0.2"))  # relevance cutoff (cosine similarity)
 COUNCIL_LINE_CHARS = 1200
 
 _pipeline = None
@@ -239,7 +240,10 @@ class MemoryPipeline:
         elif bot_id:
             identity = f"{identity}\n\n{NO_SONG_TOOL_NOTE}"
 
-        memories = self.vault.search_memories(memory_query or user_input, limit=3, partitions=partitions)
+        # Only memories actually related to the message: the 3 closest are always returned, and loosely
+        # related ones (e.g. old song shares on a privacy question) otherwise steer the reply off topic
+        memories = [m for m in self.vault.search_memories(memory_query or user_input, limit=3, partitions=partitions)
+                    if m.score >= MIN_MEMORY_SCORE]
         raw_context = "\n---\n".join([m.payload["text"] for m in memories])
         masked_context = self.scrubber.mask(raw_context)
         masked_prompt = self.scrubber.mask(user_input)
@@ -380,9 +384,11 @@ class MemoryPipeline:
             f"[THE COUNCIL]\nYou are in a group conversation with {user} (a human) and other Family Nodes. "
             f"Everyone here sees everything that is said.\nThe other Family Nodes present:\n"
             f"{others or '- (no one else this time)'}\n\n"
-            f"How to take part: speak only as yourself, {me['name']}, in the first person. Respond to what "
-            f"{user} and the others actually said, and feel free to ask another Family Node a question by name - "
-            f"they will answer when it is their turn, and {user} will answer for themself. Your reply is ONLY "
+            f"How to take part: speak only as yourself, {me['name']}, in the first person. If someone asked you a "
+            f"question, answer it first - with real substance: an opinion, an example, something you know. Then "
+            f"respond to what {user} and the others actually said. You may end by asking another Family Node one "
+            f"question by name, but a reply that is only a question is not a real answer. Others will answer "
+            f"when it is their turn, and {user} will answer for themself. Your reply is ONLY "
             f"your own next message: never write lines for {user} or the others (no \"{user}:\" or "
             f"\"Name:\" lines), never answer on their behalf, and don't narrate. Don't repeat or paraphrase what "
             f"someone else already said - add your own angle, true to your own personality. Keep it conversational and "
@@ -411,8 +417,9 @@ class MemoryPipeline:
                 lines.append(f"{speaker}: {text}")
         if keep_going:
             prompt = (f"({user} is listening and wants you Family Nodes to talk with each other now. Speak to "
-                      f"another Family Node by name: answer a question they asked you, react to what they said, or "
-                      f"ask them something you're curious about. Don't address {user} this time.)")
+                      f"another Family Node by name. If they asked you something, answer it properly first - share "
+                      f"your actual view or an example. Then react, and only if you like, ask one new question. "
+                      f"Don't address {user} this time.)")
             memory_query = " ".join(lines[-3:]) or "council conversation"
         else:
             prompt, memory_query = user_input, None

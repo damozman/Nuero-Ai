@@ -12,9 +12,12 @@ SHARED = "shared"  # memory partition every bot (and the system helper) can sear
 BOT_COLORS = ["#f97316", "#a3e635", "#22d3ee", "#818cf8", "#c084fc", "#fb7185",
               "#14b8a6", "#e879f9", "#b45309", "#ef4444", "#cbd5e1", "#f8fafc"]
 
-# Files in a bot's folder that probably describe the bot, used to pre-fill its personality
-_PERSONA_FILE = re.compile(r"^(persona|personality|identity|instructions?|system[ _-]?prompt|character|profile)\b.*\.(txt|md)$", re.I)
-_PERSONA_MAX_CHARS = 6000
+# Files in a bot's folder that probably describe the bot, used to pre-fill its personality. Directive-style files
+# (system prompt, instructions) come first, then descriptive ones (persona card, character, profile...).
+_DIRECTIVE_FILE = re.compile(r"^(system[ _-]?prompt|instructions?|directives?)\b.*\.(txt|md)$", re.I)
+_PERSONA_FILE = re.compile(r"^(system[ _-]?prompt|instructions?|directives?|persona|personality|identity|character|"
+                           r"profile|card)\b.*\.(txt|md)$", re.I)
+_PERSONA_MAX_CHARS = 20000
 
 
 def _slug(name):
@@ -22,20 +25,23 @@ def _slug(name):
 
 
 def find_persona_text(folder):
-    """Personality text from a persona-like file at the top of the folder, or ''."""
+    """Personality text from every persona-like file at the top of the folder, directives first, or ''."""
     try:
-        names = sorted(os.listdir(folder))
+        names = sorted(os.listdir(folder), key=lambda n: (not _DIRECTIVE_FILE.match(n), n.lower()))
     except OSError:
         return ""
+    parts = []
     for name in names:
         path = os.path.join(folder, name)
         if _PERSONA_FILE.match(name) and os.path.isfile(path):
             try:
                 with open(path, "r", encoding="utf-8", errors="ignore") as f:
-                    return f.read(_PERSONA_MAX_CHARS).strip()
+                    text = f.read(_PERSONA_MAX_CHARS).strip()
             except OSError:
                 continue
-    return ""
+            if text:
+                parts.append(text)
+    return "\n\n".join(parts)[:_PERSONA_MAX_CHARS]
 
 
 class BotRegistry:

@@ -2,7 +2,7 @@
 itself. {system_name} is filled in with the system's current name. Contains no personal data.
 Bump GUIDE_VERSION when the text changes."""
 
-GUIDE_VERSION = 6
+GUIDE_VERSION = 7
 GUIDE_TITLE = "{system_name} Guide"
 
 GUIDE_PAGES = [
@@ -41,7 +41,8 @@ GUIDE_PAGES = [
     ("Family Nodes",
      "Family Nodes are created in the Family Nodes panel (button at the bottom of the sidebar, or '+ New'): paste "
      "the path of the Family Node's folder and click 'Create Family Node'. Everything in that folder becomes its "
-     "private memory, and a file named persona/personality/identity/instructions sets its starting personality. "
+     "private memory. Files named like 'System Prompt', 'Instructions', 'Persona' or 'Persona Card' (.txt or .md) "
+     "are combined into its starting personality, directives first. "
      "Each Family Node card has: name, picture (upload or 'Create' to have the image AI paint one), personality, "
      "switches for creating images and sharing songs on its own, a Voice section (voice, speed, pitch, preview) "
      "and Skills."),
